@@ -89,37 +89,6 @@ npm install
 ### 3. Configure Environment Variables
 
 **Backend (`server/.env`):**
-```env
-NODE_ENV=development
-PORT=5000
-MONGODB_URI=mongodb://127.0.0.1:27017/evaltech
-JWT_SECRET=super_secret_jwt_key_at_least_64_characters_long
-JWT_EXPIRES_IN=7d
-CLIENT_URL=http://localhost:5173
-
-# Razorpay Credentials (Sandbox / Test Mode)
-RAZORPAY_KEY_ID=rzp_test_placeholder_key
-RAZORPAY_KEY_SECRET=rzp_test_placeholder_secret
-RAZORPAY_WEBHOOK_SECRET=whsec_placeholder_secret
-
-# Transactional Email (SMTP or Ethereal test email)
-SMTP_HOST=smtp.ethereal.email
-SMTP_PORT=587
-SMTP_USER=
-SMTP_PASS=
-EMAIL_FROM="EvalTech Support <noreply@evaltech.io>"
-
-# Optional AI Question Generation API Key
-GEMINI_API_KEY=your_gemini_api_key_here
-
-# Code Execution Sandbox (default: local_sandbox, or judge0 / piston)
-COMPILER_PROVIDER=local_sandbox
-JUDGE0_API_URL=https://judge0-ce.p.rapidapi.com
-JUDGE0_API_KEY=
-EXECUTION_TIMEOUT_MS=5000
-MAX_RUN_CODE_PER_MINUTE=15
-```
-
 ### 4. Run Automated Test Suite
 ```bash
 cd server
