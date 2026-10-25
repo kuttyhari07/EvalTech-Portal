@@ -28,6 +28,9 @@ import {
   MinusCircle,
   Clock,
   Tag,
+  FileUp,
+  FileText,
+  UploadCloud,
 } from 'lucide-react';
 import { ProgrammingQuestionModal } from '../../components/programming/ProgrammingQuestionModal';
 
@@ -94,6 +97,26 @@ export const StaffQuestionBank: React.FC = () => {
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiGeneratedItems, setAiGeneratedItems] = useState<any[]>([]);
   const [aiReviewStep, setAiReviewStep] = useState<'prompt' | 'review'>('prompt');
+
+  // Document / PDF Import Modal State
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+  const [docModalTargetBankId, setDocModalTargetBankId] = useState<string | null>(null);
+  const [docUploadMode, setDocUploadMode] = useState<'file' | 'text'>('file');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileBase64, setFileBase64] = useState<string>('');
+  const [pastedText, setPastedText] = useState<string>('');
+  const [docBankTitle, setDocBankTitle] = useState<string>('');
+  const [docSubject, setDocSubject] = useState<string>('');
+  const [docDescription, setDocDescription] = useState<string>('');
+  const [docCount, setDocCount] = useState<number>(5);
+  const [docQuestionTypes, setDocQuestionTypes] = useState<'all' | 'mcq' | 'programming'>('all');
+  const [docDifficulty, setDocDifficulty] = useState<'mixed' | 'easy' | 'medium' | 'hard'>('mixed');
+  const [docStep, setDocStep] = useState<'upload' | 'review'>('upload');
+  const [docAnalyzing, setDocAnalyzing] = useState<boolean>(false);
+  const [docSaving, setDocSaving] = useState<boolean>(false);
+  const [docError, setDocError] = useState<string | null>(null);
+  const [extractedQuestions, setExtractedQuestions] = useState<any[]>([]);
+  const [selectedExtractedIndices, setSelectedExtractedIndices] = useState<number[]>([]);
 
   // Fetch Banks
   const fetchBanks = async () => {
@@ -355,6 +378,193 @@ export const StaffQuestionBank: React.FC = () => {
     setIsAiModalOpen(true);
   };
 
+  // Document / PDF Import Modal Handlers
+  const resetDocModal = () => {
+    setSelectedFile(null);
+    setFileBase64('');
+    setPastedText('');
+    setDocBankTitle('');
+    setDocSubject('');
+    setDocDescription('');
+    setDocCount(5);
+    setDocQuestionTypes('all');
+    setDocDifficulty('mixed');
+    setDocStep('upload');
+    setDocAnalyzing(false);
+    setDocSaving(false);
+    setDocError(null);
+    setExtractedQuestions([]);
+    setSelectedExtractedIndices([]);
+  };
+
+  const openDocImportModal = (targetBankId?: string) => {
+    resetDocModal();
+    if (targetBankId) {
+      setDocModalTargetBankId(targetBankId);
+      if (activeBank) {
+        setDocBankTitle(activeBank.title);
+        setDocSubject(activeBank.subject);
+        setDocDescription(activeBank.description || '');
+      }
+    } else {
+      setDocModalTargetBankId(null);
+    }
+    setIsDocModalOpen(true);
+  };
+
+  const handleFileSelection = (file: File) => {
+    setSelectedFile(file);
+    setDocError(null);
+
+    // Auto populate bank title from file name if blank
+    if (!docBankTitle) {
+      const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+      setDocBankTitle(cleanName);
+    }
+
+    const reader = new FileReader();
+    if (
+      file.name.endsWith('.txt') ||
+      file.name.endsWith('.md') ||
+      file.name.endsWith('.csv') ||
+      file.name.endsWith('.json')
+    ) {
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        setPastedText(text || '');
+        const b64 = btoa(unescape(encodeURIComponent(text || '')));
+        setFileBase64(b64);
+      };
+      reader.readAsText(file);
+    } else {
+      // PDF or DOCX binary
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        const base64Content = result.split(',')[1] || '';
+        setFileBase64(base64Content);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDocDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFileSelection(file);
+  };
+
+  const handleAnalyzeDocument = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setDocError(null);
+
+    if (docUploadMode === 'file' && !selectedFile && !fileBase64) {
+      setDocError('Please choose a PDF or document file to upload.');
+      return;
+    }
+    if (docUploadMode === 'text' && !pastedText.trim()) {
+      setDocError('Please paste your syllabus, exam questions, or lecture notes.');
+      return;
+    }
+
+    setDocAnalyzing(true);
+    try {
+      const res = await api.post('/ai/generate-from-document', {
+        fileBase64: docUploadMode === 'file' ? fileBase64 : undefined,
+        fileName: docUploadMode === 'file' ? selectedFile?.name : undefined,
+        mimeType: docUploadMode === 'file' ? selectedFile?.type : undefined,
+        textContent: docUploadMode === 'text' ? pastedText : undefined,
+        bankTitle: docBankTitle.trim() || undefined,
+        subject: docSubject.trim() || undefined,
+        count: docCount,
+        questionTypes: docQuestionTypes,
+        difficulty: docDifficulty,
+      });
+
+      const data = res.data?.data;
+      if (data) {
+        if (!docBankTitle && data.suggestedBankTitle) {
+          setDocBankTitle(data.suggestedBankTitle);
+        }
+        if (!docSubject && data.suggestedSubject) {
+          setDocSubject(data.suggestedSubject);
+        }
+        if (!docDescription && data.suggestedDescription) {
+          setDocDescription(data.suggestedDescription);
+        }
+        const qs = Array.isArray(data.questions) ? data.questions : [];
+        setExtractedQuestions(qs);
+        setSelectedExtractedIndices(qs.map((_: any, idx: number) => idx));
+        setDocStep('review');
+      }
+    } catch (err: any) {
+      setDocError(err.response?.data?.message || err.message || 'Failed to analyze document.');
+    } finally {
+      setDocAnalyzing(false);
+    }
+  };
+
+  const handleToggleDocQuestion = (index: number) => {
+    setSelectedExtractedIndices((prev) =>
+      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
+    );
+  };
+
+  const handleDeleteExtractedQuestion = (index: number) => {
+    setExtractedQuestions((prev) => prev.filter((_, i) => i !== index));
+    setSelectedExtractedIndices((prev) =>
+      prev
+        .filter((i) => i !== index)
+        .map((i) => (i > index ? i - 1 : i))
+    );
+  };
+
+  const handleSaveDocumentBank = async () => {
+    if (selectedExtractedIndices.length === 0) {
+      setDocError('Please select at least one question to save.');
+      return;
+    }
+
+    const titleToUse = docBankTitle.trim() || activeBank?.title;
+    const subjectToUse = docSubject.trim() || activeBank?.subject;
+
+    if (!titleToUse && !docModalTargetBankId) {
+      setDocError('Please provide a Question Bank Title.');
+      return;
+    }
+
+    if (!subjectToUse && !docModalTargetBankId) {
+      setDocError('Please provide a Subject.');
+      return;
+    }
+
+    setDocSaving(true);
+    try {
+      const selectedQuestions = selectedExtractedIndices.map((i) => extractedQuestions[i]);
+
+      const res = await api.post('/ai/create-bank-with-questions', {
+        bankTitle: titleToUse || 'Imported Question Bank',
+        subject: subjectToUse || 'General Knowledge',
+        description: docDescription.trim(),
+        existingBankId: docModalTargetBankId || undefined,
+        questions: selectedQuestions,
+      });
+
+      const bank = res.data?.data?.bank;
+      setIsDocModalOpen(false);
+      resetDocModal();
+      await fetchBanks();
+      await fetchQuestions();
+      if (bank?._id) {
+        await fetchBankDetails(bank._id);
+        setViewMode('banks');
+      }
+    } catch (err: any) {
+      setDocError(err.response?.data?.message || err.message || 'Failed to save question bank.');
+    } finally {
+      setDocSaving(false);
+    }
+  };
+
   // Filtering for banks
   const filteredBanks = banks.filter((b) => {
     const q = bankSearch.toLowerCase();
@@ -459,17 +669,27 @@ export const StaffQuestionBank: React.FC = () => {
                 leftIcon={<Search className="w-4 h-4" />}
               />
             </div>
-            <Button
-              variant="electric"
-              size="sm"
-              leftIcon={<FolderPlus className="w-4 h-4" />}
-              onClick={() => {
-                setBankFormError(null);
-                setIsCreateBankOpen(true);
-              }}
-            >
-              Create Question Bank
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="electric"
+                size="sm"
+                leftIcon={<FileUp className="w-4 h-4" />}
+                onClick={() => openDocImportModal()}
+              >
+                Create Bank from PDF / File
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                leftIcon={<FolderPlus className="w-4 h-4" />}
+                onClick={() => {
+                  setBankFormError(null);
+                  setIsCreateBankOpen(true);
+                }}
+              >
+                Create Question Bank
+              </Button>
+            </div>
           </div>
 
           {/* Banks Grid */}
@@ -592,8 +812,17 @@ export const StaffQuestionBank: React.FC = () => {
               <Button
                 variant="electric"
                 size="sm"
-                leftIcon={<Sparkles className="w-4 h-4" />}
+                leftIcon={<FileUp className="w-4 h-4" />}
+                onClick={() => openDocImportModal(activeBank._id)}
+              >
+                Import from PDF / File
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                leftIcon={<Sparkles className="w-4 h-4 text-indigo-300" />}
                 onClick={openAiMcqModal}
+                className="border-indigo-400/40 text-indigo-100 hover:bg-white/10"
               >
                 AI Generate MCQs
               </Button>
@@ -1424,6 +1653,428 @@ export const StaffQuestionBank: React.FC = () => {
           }
         }}
       />
+
+      {/* MODAL 6: DOCUMENT / PDF QUESTION BANK CREATOR */}
+      <Modal
+        isOpen={isDocModalOpen}
+        onClose={() => setIsDocModalOpen(false)}
+        title={
+          docModalTargetBankId
+            ? `Import from File into "${activeBank?.title || 'Bank'}"`
+            : docStep === 'upload'
+            ? '📄 Create Question Bank from Document / PDF'
+            : `Review & Save Question Bank (${selectedExtractedIndices.length}/${extractedQuestions.length} Selected)`
+        }
+        size={docStep === 'review' ? 'xl' : 'lg'}
+      >
+        {docStep === 'upload' ? (
+          <form onSubmit={handleAnalyzeDocument} className="space-y-5">
+            {/* Mode Tabs */}
+            <div className="flex items-center gap-2 p-1 bg-pearl-100 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setDocUploadMode('file')}
+                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                  docUploadMode === 'file'
+                    ? 'bg-white text-indigo-brand shadow-subtle'
+                    : 'text-midnight-600 hover:text-midnight-950'
+                }`}
+              >
+                <FileUp className="w-4 h-4" />
+                <span>Upload Document / PDF</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDocUploadMode('text')}
+                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                  docUploadMode === 'text'
+                    ? 'bg-white text-indigo-brand shadow-subtle'
+                    : 'text-midnight-600 hover:text-midnight-950'
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                <span>Paste Text / Syllabus</span>
+              </button>
+            </div>
+
+            {/* Error Banner */}
+            {docError && (
+              <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{docError}</span>
+              </div>
+            )}
+
+            {/* File Upload Zone */}
+            {docUploadMode === 'file' ? (
+              <div
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleDocDrop}
+                className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer ${
+                  selectedFile
+                    ? 'border-emerald-400 bg-emerald-50/40'
+                    : 'border-pearl-300 hover:border-indigo-400 hover:bg-indigo-50/20'
+                }`}
+                onClick={() => document.getElementById('doc-file-input')?.click()}
+              >
+                <input
+                  id="doc-file-input"
+                  type="file"
+                  accept=".pdf,.docx,.txt,.md,.csv,.json"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFileSelection(file);
+                  }}
+                />
+
+                {selectedFile ? (
+                  <div className="space-y-2">
+                    <div className="w-12 h-12 mx-auto rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                      <CheckCircle2 className="w-6 h-6" />
+                    </div>
+                    <p className="text-sm font-bold text-midnight-900">{selectedFile.name}</p>
+                    <p className="text-xs text-midnight-500">
+                      {(selectedFile.size / 1024 / 1024).toFixed(2)} MB • Ready for AI extraction
+                    </p>
+                    <p className="text-xs text-indigo-brand font-semibold underline">
+                      Click to choose another file
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="w-12 h-12 mx-auto rounded-full bg-indigo-50 text-indigo-brand flex items-center justify-center">
+                      <UploadCloud className="w-6 h-6" />
+                    </div>
+                    <p className="text-sm font-bold text-midnight-900">
+                      Drag & drop your file here, or browse
+                    </p>
+                    <p className="text-xs text-midnight-500">
+                      Supports PDF exam papers, Word docs, TXT syllabus, Markdown, CSV, JSON
+                    </p>
+                    <div className="flex flex-wrap items-center justify-center gap-1.5 pt-2">
+                      {['PDF', 'DOCX', 'TXT', 'MD', 'CSV', 'JSON'].map((fmt) => (
+                        <span
+                          key={fmt}
+                          className="px-2 py-0.5 rounded text-[10px] font-bold bg-pearl-200/80 text-midnight-700"
+                        >
+                          .{fmt}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-midnight-700 mb-1">
+                  Paste Syllabus, Textbook Excerpt, or Exam Questions
+                </label>
+                <textarea
+                  rows={6}
+                  placeholder="Paste your curriculum text, question sheet, or course notes here..."
+                  value={pastedText}
+                  onChange={(e) => setPastedText(e.target.value)}
+                  className="w-full rounded-xl border border-pearl-300 p-3 text-xs text-midnight-900 focus:border-indigo-brand focus:outline-none"
+                />
+              </div>
+            )}
+
+            {/* Config Fields */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Question Bank Title (Optional)"
+                placeholder="Auto-detected from document if blank"
+                value={docBankTitle}
+                onChange={(e) => setDocBankTitle(e.target.value)}
+              />
+              <Input
+                label="Subject / Topic (Optional)"
+                placeholder="Auto-detected from document if blank"
+                value={docSubject}
+                onChange={(e) => setDocSubject(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-midnight-700 mb-1">
+                  Questions to Generate
+                </label>
+                <select
+                  value={docCount}
+                  onChange={(e) => setDocCount(Number(e.target.value))}
+                  className="w-full rounded-lg border border-pearl-300 bg-white px-3 py-2 text-xs text-midnight-900 focus:border-indigo-brand focus:outline-none"
+                >
+                  <option value={3}>3 Questions (Quick)</option>
+                  <option value={5}>5 Questions (Standard)</option>
+                  <option value={10}>10 Questions (Comprehensive)</option>
+                  <option value={15}>15 Questions (Full Exam)</option>
+                  <option value={20}>20 Questions (Deep Bank)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-midnight-700 mb-1">
+                  Question Types
+                </label>
+                <select
+                  value={docQuestionTypes}
+                  onChange={(e) => setDocQuestionTypes(e.target.value as any)}
+                  className="w-full rounded-lg border border-pearl-300 bg-white px-3 py-2 text-xs text-midnight-900 focus:border-indigo-brand focus:outline-none"
+                >
+                  <option value="all">Mixed (MCQs & Coding)</option>
+                  <option value="mcq">MCQs Only</option>
+                  <option value="programming">Coding Problems Only</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-midnight-700 mb-1">
+                  Difficulty Level
+                </label>
+                <select
+                  value={docDifficulty}
+                  onChange={(e) => setDocDifficulty(e.target.value as any)}
+                  className="w-full rounded-lg border border-pearl-300 bg-white px-3 py-2 text-xs text-midnight-900 focus:border-indigo-brand focus:outline-none"
+                >
+                  <option value="mixed">Mixed (All Levels)</option>
+                  <option value="easy">Easy (Foundations)</option>
+                  <option value="medium">Medium (Standard)</option>
+                  <option value="hard">Hard (Advanced)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-3 border-t border-pearl-200">
+              <Button type="button" variant="outline" onClick={() => setIsDocModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="electric"
+                isLoading={docAnalyzing}
+                leftIcon={<Sparkles className="w-4 h-4" />}
+              >
+                {docAnalyzing ? 'Analyzing Document with AI...' : 'Analyze & Generate Questions'}
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <div className="space-y-4">
+            {/* Review Step: Header with Bank info */}
+            <div className="p-4 rounded-xl bg-pearl-50 border border-pearl-200 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Input
+                  label="Question Bank Title"
+                  required
+                  value={docBankTitle}
+                  onChange={(e) => setDocBankTitle(e.target.value)}
+                />
+                <Input
+                  label="Subject"
+                  required
+                  value={docSubject}
+                  onChange={(e) => setDocSubject(e.target.value)}
+                />
+              </div>
+              <Input
+                label="Description"
+                placeholder="Optional description for this bank..."
+                value={docDescription}
+                onChange={(e) => setDocDescription(e.target.value)}
+              />
+            </div>
+
+            {/* Error Banner */}
+            {docError && (
+              <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{docError}</span>
+              </div>
+            )}
+
+            {/* Questions List Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-pearl-200 text-xs">
+              <span className="font-bold text-midnight-900">
+                Extracted Questions ({selectedExtractedIndices.length} of {extractedQuestions.length} selected)
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedExtractedIndices(
+                      selectedExtractedIndices.length === extractedQuestions.length
+                        ? []
+                        : extractedQuestions.map((_, i) => i)
+                    )
+                  }
+                  className="font-bold text-indigo-brand hover:underline"
+                >
+                  {selectedExtractedIndices.length === extractedQuestions.length
+                    ? 'Unselect All'
+                    : 'Select All'}
+                </button>
+                <span className="text-pearl-300">|</span>
+                <button
+                  type="button"
+                  onClick={() => setDocStep('upload')}
+                  className="text-midnight-600 hover:text-midnight-900 font-semibold"
+                >
+                  Upload Another File
+                </button>
+              </div>
+            </div>
+
+            {/* Questions Scrollable List */}
+            <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+              {extractedQuestions.map((q, idx) => {
+                const isSelected = selectedExtractedIndices.includes(idx);
+                const isProg = q.type === 'programming';
+
+                return (
+                  <div
+                    key={idx}
+                    className={`p-4 rounded-xl border transition-all ${
+                      isSelected
+                        ? 'border-indigo-brand/40 bg-white shadow-subtle'
+                        : 'border-pearl-200 bg-pearl-50/50 opacity-70'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleDocQuestion(idx)}
+                          className="mt-0.5 text-indigo-brand hover:scale-110 transition-transform"
+                        >
+                          {isSelected ? (
+                            <CheckSquare className="w-5 h-5 text-indigo-brand" />
+                          ) : (
+                            <Square className="w-5 h-5 text-pearl-400" />
+                          )}
+                        </button>
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-black text-midnight-950">
+                              #{idx + 1}
+                            </span>
+                            <Badge
+                              variant={isProg ? 'success' : 'info'}
+                              className="text-[10px] font-bold uppercase tracking-wider"
+                            >
+                              {isProg ? '💻 Coding Problem' : q.type || 'MCQ'}
+                            </Badge>
+                            <Badge variant="purple" className="text-[10px]">
+                              {q.difficulty || 'medium'}
+                            </Badge>
+                            <span className="text-[10px] font-semibold text-midnight-600 bg-pearl-100 px-2 py-0.5 rounded">
+                              {q.defaultMarks || (isProg ? 10 : 1)} Mark
+                              {(q.defaultMarks || (isProg ? 10 : 1)) === 1 ? '' : 's'}
+                            </span>
+                          </div>
+
+                          <p className="text-xs font-bold text-midnight-950">
+                            {isProg ? q.title : q.text}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteExtractedQuestion(idx)}
+                        className="text-midnight-400 hover:text-red-600 p-1 rounded transition-colors"
+                        title="Remove question"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Programming Details Preview */}
+                    {isProg ? (
+                      <div className="mt-3 pl-8 space-y-2 text-xs">
+                        <p className="text-midnight-700 text-[11px] leading-relaxed line-clamp-2">
+                          {q.problemStatement}
+                        </p>
+                        {q.sampleInput && (
+                          <div className="grid grid-cols-2 gap-2 bg-pearl-100 p-2.5 rounded-lg text-[10px] font-mono">
+                            <div>
+                              <span className="font-bold text-midnight-600 block">Sample Input:</span>
+                              <pre className="text-midnight-900 mt-0.5">{q.sampleInput}</pre>
+                            </div>
+                            <div>
+                              <span className="font-bold text-midnight-600 block">Expected Output:</span>
+                              <pre className="text-emerald-700 mt-0.5">{q.sampleExpectedOutput}</pre>
+                            </div>
+                          </div>
+                        )}
+                        {q.testCases && q.testCases.length > 0 && (
+                          <p className="text-[10px] text-midnight-500 font-semibold">
+                            Includes {q.testCases.length} verified test cases & starter code in 4 languages
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      /* MCQ Details Preview */
+                      <div className="mt-3 pl-8 space-y-2">
+                        {q.options && q.options.length > 0 && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
+                            {q.options.map((opt: any) => {
+                              const isCorrect = (q.correctAnswers || []).includes(opt.id);
+                              return (
+                                <div
+                                  key={opt.id}
+                                  className={`px-3 py-1.5 rounded-lg border text-[11px] flex items-center justify-between ${
+                                    isCorrect
+                                      ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-bold'
+                                      : 'bg-pearl-50/60 border-pearl-200 text-midnight-800'
+                                  }`}
+                                >
+                                  <span>
+                                    <strong className="mr-1">{opt.id}:</strong> {opt.text}
+                                  </span>
+                                  {isCorrect && (
+                                    <span className="text-emerald-600 text-[10px] font-extrabold uppercase ml-1">
+                                      Correct ✓
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {q.explanation && (
+                          <p className="text-[10px] text-midnight-600 italic bg-pearl-50 p-2 rounded border border-pearl-200">
+                            <strong>Explanation:</strong> {q.explanation}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="flex items-center justify-between pt-3 border-t border-pearl-200">
+              <Button variant="outline" onClick={() => setDocStep('upload')}>
+                &larr; Back to Document
+              </Button>
+              <Button
+                variant="electric"
+                onClick={handleSaveDocumentBank}
+                isLoading={docSaving}
+                disabled={selectedExtractedIndices.length === 0}
+                leftIcon={<FolderPlus className="w-4 h-4" />}
+              >
+                {docModalTargetBankId
+                  ? `Import ${selectedExtractedIndices.length} Questions into Bank`
+                  : `Create Question Bank (${selectedExtractedIndices.length} Questions)`}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

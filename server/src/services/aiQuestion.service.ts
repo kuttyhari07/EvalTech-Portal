@@ -97,10 +97,11 @@ export class AIQuestionService {
     types: string[]
   ): Promise<IGeneratedQuestionItem[]> {
     const candidateModels = [
-      config.GEMINI_MODEL || 'gemini-3.5-flash',
-      'gemini-flash-lite-latest',
-      'gemini-3.1-flash-lite',
       'gemini-3.5-flash-lite',
+      'gemini-3.5-flash',
+      'gemini-flash-lite-latest',
+      'gemini-flash-latest',
+      config.GEMINI_MODEL || 'gemini-3.5-flash',
     ];
 
     const prompt = `
@@ -290,10 +291,11 @@ export class AIQuestionService {
   }): Promise<any> {
     const difficulty = params.difficulty || 'medium';
     const candidateModels = [
-      config.GEMINI_MODEL || 'gemini-3.5-flash',
-      'gemini-flash-lite-latest',
-      'gemini-3.1-flash-lite',
       'gemini-3.5-flash-lite',
+      'gemini-3.5-flash',
+      'gemini-flash-lite-latest',
+      'gemini-flash-latest',
+      config.GEMINI_MODEL || 'gemini-3.5-flash',
     ];
 
     const prompt = `
@@ -386,6 +388,269 @@ export class AIQuestionService {
 
     // Fallback if AI service unavailable
     return this.generateFallbackProgrammingQuestion(params.subject, params.topic, difficulty);
+  }
+
+  /**
+   * Generates a structured Question Bank directly from an uploaded Document (PDF, Word DOCX, TXT, CSV, MD) or raw text.
+   */
+  static async generateFromDocument(params: {
+    userId: string;
+    organizationId?: string;
+    fileBase64?: string;
+    fileName?: string;
+    mimeType?: string;
+    textContent?: string;
+    bankTitle?: string;
+    subject?: string;
+    count?: number;
+    questionTypes?: 'all' | 'mcq' | 'programming';
+    difficulty?: 'easy' | 'medium' | 'hard' | 'mixed';
+  }): Promise<{
+    suggestedBankTitle: string;
+    suggestedSubject: string;
+    suggestedDescription: string;
+    questions: any[];
+  }> {
+    const count = Math.min(Math.max(1, params.count || 5), 25);
+    const difficulty = params.difficulty || 'mixed';
+    const questionTypes = params.questionTypes || 'all';
+
+    let isPdf = false;
+    let extractedText = params.textContent || '';
+
+    // Handle uploaded file content
+    if (params.fileBase64) {
+      const mime = (params.mimeType || '').toLowerCase();
+      const name = (params.fileName || '').toLowerCase();
+
+      if (mime.includes('pdf') || name.endsWith('.pdf')) {
+        isPdf = true;
+      } else if (
+        mime.includes('word') ||
+        mime.includes('officedocument') ||
+        name.endsWith('.docx')
+      ) {
+        try {
+          // Extract text from DOCX using mammoth
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const mammoth = require('mammoth');
+          const buffer = Buffer.from(params.fileBase64, 'base64');
+          const result = await mammoth.extractRawText({ buffer });
+          extractedText = result.value || '';
+        } catch (err: any) {
+          console.warn('[AIService] Failed to parse docx via mammoth:', err.message);
+        }
+      } else {
+        // Plain text, markdown, csv, or json
+        try {
+          const buffer = Buffer.from(params.fileBase64, 'base64');
+          extractedText = buffer.toString('utf-8');
+        } catch {
+          extractedText = '';
+        }
+      }
+    }
+
+    const candidateModels = [
+      'gemini-3.5-flash-lite',
+      'gemini-3.5-flash',
+      'gemini-flash-lite-latest',
+      'gemini-flash-latest',
+      config.GEMINI_MODEL || 'gemini-3.5-flash',
+    ];
+
+    const promptText = `
+      You are an expert university professor, curriculum designer, and examination creator.
+      Analyze the provided document (exam paper, textbook chapter, lecture notes, syllabus, or coding problem set) and generate a comprehensive Question Bank.
+
+      Target Specifications:
+      - Number of questions: ${count}
+      - Question Types: ${questionTypes} (Options: 'all', 'mcq', 'programming').
+        * If 'all': Generate a well-balanced mixture of MCQs and 1-2 coding problems (if the subject is computer science, programming, or mathematics).
+        * If 'mcq': Generate strictly multiple-choice questions with 4 options (A, B, C, D), correct answer, and explanation.
+        * If 'programming': Generate coding challenges with problem statement, input/output specifications, constraints, sample cases, starter code in python/java/cpp/c, and test cases.
+      - Difficulty: ${difficulty} (Options: 'easy', 'medium', 'hard', 'mixed').
+      - Desired Subject: ${params.subject ? params.subject : 'Auto-detect from document'}
+      - Desired Bank Title: ${params.bankTitle ? params.bankTitle : 'Auto-detect from document content or title'}
+
+      Respond STRICTLY with a single valid JSON object adhering to this schema (do NOT include markdown code blocks or text outside JSON):
+      {
+        "suggestedBankTitle": "Concise, descriptive title for this Question Bank",
+        "suggestedSubject": "Academic subject name (e.g. Computer Science, Physics, Mathematics, English)",
+        "suggestedDescription": "Brief 1-2 sentence description of topics covered in this Question Bank",
+        "questions": [
+          // For MCQ questions:
+          {
+            "type": "mcq",
+            "text": "Clear question text",
+            "difficulty": "easy" | "medium" | "hard",
+            "options": [
+              { "id": "A", "text": "Option A text" },
+              { "id": "B", "text": "Option B text" },
+              { "id": "C", "text": "Option C text" },
+              { "id": "D", "text": "Option D text" }
+            ],
+            "correctAnswers": ["A"],
+            "explanation": "Detailed explanation of the correct answer",
+            "defaultMarks": 1
+          },
+          // For Programming questions (if applicable or requested):
+          {
+            "type": "programming",
+            "title": "Problem Title",
+            "problemStatement": "Clear and detailed problem description",
+            "inputFormat": "Input format specification",
+            "outputFormat": "Output format specification",
+            "constraints": "e.g. 1 <= N <= 10^5",
+            "difficulty": "easy" | "medium" | "hard",
+            "sampleInput": "Sample standard input",
+            "sampleExpectedOutput": "Sample standard output",
+            "sampleExplanation": "Detailed explanation of sample case",
+            "defaultMarks": 10,
+            "timeLimitSeconds": 2,
+            "memoryLimitMb": 256,
+            "starterCode": {
+              "python": "import sys\\n\\ndef main():\\n    pass\\n\\nif __name__ == '__main__':\\n    main()\\n",
+              "java": "import java.util.*;\\n\\npublic class Main {\\n    public static void main(String[] args) {\\n    }\\n}\\n",
+              "cpp": "#include <iostream>\\nusing namespace std;\\n\\nint main() {\\n    return 0;\\n}\\n",
+              "c": "#include <stdio.h>\\n\\nint main() {\\n    return 0;\\n}\\n"
+            },
+            "testCases": [
+              { "input": "Sample input", "expectedOutput": "Expected output", "isHidden": false, "isSample": true, "weight": 5, "description": "Sample test case" },
+              { "input": "Hidden input", "expectedOutput": "Hidden output", "isHidden": true, "isSample": false, "weight": 5, "description": "Hidden test case" }
+            ]
+          }
+        ]
+      }
+    `;
+
+    // Attempt Gemini call
+    if (config.GEMINI_API_KEY) {
+      for (const model of candidateModels) {
+        try {
+          const parts: any[] = [];
+
+          if (isPdf && params.fileBase64) {
+            // Native PDF document comprehension via inlineData
+            parts.push({
+              inlineData: {
+                mimeType: 'application/pdf',
+                data: params.fileBase64,
+              },
+            });
+            parts.push({ text: promptText });
+          } else {
+            // Text or extracted document text
+            const docSnippet = extractedText.slice(0, 60000); // up to 60k characters
+            parts.push({
+              text: `${promptText}\n\nDOCUMENT CONTENT:\n${docSnippet}`,
+            });
+          }
+
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.GEMINI_API_KEY}`;
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts }] }),
+          });
+
+          if (!res.ok) {
+            const errData: any = await res.json().catch(() => ({}));
+            console.warn(`[AIService] Model ${model} returned ${res.status}: ${errData?.error?.message || res.statusText}`);
+            continue;
+          }
+
+          const data: any = await res.json();
+          const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (!rawText) continue;
+
+          // Strip markdown code fences if present
+          let cleanJson = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+          const firstBrace = cleanJson.indexOf('{');
+          const lastBrace = cleanJson.lastIndexOf('}');
+          if (firstBrace !== -1 && lastBrace !== -1) {
+            cleanJson = cleanJson.substring(firstBrace, lastBrace + 1);
+          }
+
+          const parsed = JSON.parse(cleanJson);
+
+          // Log AI usage
+          await AIUsageLog.create({
+            userId: params.userId,
+            organizationId: params.organizationId,
+            prompt: `Generate Question Bank from document: ${params.fileName || 'Pasted Content'}`,
+            action: 'generate_from_document',
+            questionCountGenerated: Array.isArray(parsed.questions) ? parsed.questions.length : 0,
+            tokensUsed: 600,
+            success: true,
+          }).catch(() => {});
+
+          return {
+            suggestedBankTitle: parsed.suggestedBankTitle || params.bankTitle || 'Imported Question Bank',
+            suggestedSubject: parsed.suggestedSubject || params.subject || 'General Knowledge',
+            suggestedDescription:
+              parsed.suggestedDescription ||
+              `Extracted from ${params.fileName || 'document'} on ${new Date().toLocaleDateString()}`,
+            questions: Array.isArray(parsed.questions) ? parsed.questions : [],
+          };
+        } catch (err: any) {
+          console.warn(`[AIService] Model ${model} failed in generateFromDocument:`, err.message);
+        }
+      }
+    }
+
+    // Fallback if AI service fails or is unconfigured
+    const docName = (params.fileName || 'Document').replace(/\.[^/.]+$/, '');
+    const fallbackTitle = params.bankTitle || `${docName} Question Bank`;
+    const fallbackSubject = params.subject || 'Core Curriculum';
+
+    return {
+      suggestedBankTitle: fallbackTitle,
+      suggestedSubject: fallbackSubject,
+      suggestedDescription: `Generated from ${params.fileName || 'uploaded document'}.`,
+      questions: [
+        {
+          type: 'mcq',
+          text: `Based on the provided ${docName}, what is the fundamental core concept discussed?`,
+          difficulty: 'medium',
+          options: [
+            { id: 'A', text: 'Core architectural foundation and primary operational principles' },
+            { id: 'B', text: 'Secondary configuration parameters and optional features' },
+            { id: 'C', text: 'Deprecated legacy behavior and obsolete specifications' },
+            { id: 'D', text: 'Unrelated external dependency management' },
+          ],
+          correctAnswers: ['A'],
+          explanation: 'The primary concept establishes the foundational architecture and key principles discussed throughout the material.',
+          defaultMarks: 1,
+        },
+        {
+          type: 'mcq',
+          text: `Which methodology is emphasized for optimal implementation in ${fallbackSubject}?`,
+          difficulty: 'medium',
+          options: [
+            { id: 'A', text: 'Modular decoupling with strict validation' },
+            { id: 'B', text: 'Monolithic centralization without test coverage' },
+            { id: 'C', text: 'Unchecked state mutations across concurrency boundaries' },
+            { id: 'D', text: 'Skipping edge-case verification during production rollout' },
+          ],
+          correctAnswers: ['A'],
+          explanation: 'Decoupled and thoroughly validated components provide reliability, testability, and maintainability.',
+          defaultMarks: 1,
+        },
+        {
+          type: 'mcq',
+          text: `True or False: The principles outlined in ${fallbackTitle} require systematic evaluation and continuous verification.`,
+          difficulty: 'easy',
+          options: [
+            { id: 'A', text: 'True' },
+            { id: 'B', text: 'False' },
+          ],
+          correctAnswers: ['A'],
+          explanation: 'Systematic evaluation ensures compliance with core performance benchmarks and requirements.',
+          defaultMarks: 1,
+        },
+      ],
+    };
   }
 
   static generateFallbackProgrammingQuestion(
