@@ -138,6 +138,18 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           value={sourceCode}
           theme={theme}
           onChange={(val) => onChange(val || '')}
+          onMount={(_editor, monacoInstance) => {
+            monacoInstance.errors?.setUnexpectedErrorHandler?.((err: any) => {
+              if (
+                err === 'Canceled' ||
+                err?.message === 'Canceled' ||
+                err?.name === 'Canceled' ||
+                (typeof err?.message === 'string' && err.message.includes('Canceled'))
+              ) {
+                return;
+              }
+            });
+          }}
           options={{
             readOnly: isReadOnly,
             minimap: { enabled: false },
