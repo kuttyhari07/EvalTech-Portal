@@ -31,11 +31,20 @@ import {
   Crown,
   Medal,
   Flame,
+  Download,
+  ExternalLink,
+  ShieldCheck,
 } from 'lucide-react';
 
 export const StudentDashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  // Safe Exam Browser detection
+  const isSEBBrowser =
+    typeof navigator !== 'undefined' &&
+    (navigator.userAgent.includes('SEB') ||
+      navigator.userAgent.includes('SafeExamBrowser'));
 
   const [activeTab, setActiveTab] = useState<'exams' | 'leaderboard' | 'results'>('exams');
   const [dashboardData, setDashboardData] = useState<any>(null);
@@ -46,6 +55,9 @@ export const StudentDashboard: React.FC = () => {
   const [leaderboardData, setLeaderboardData] = useState<any>(null);
   const [selectedExamId, setSelectedExamId] = useState<string>('');
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
+
+  // SEB Required Modal
+  const [selectedExamForSEB, setSelectedExamForSEB] = useState<any>(null);
 
   // Start exam password modal
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -110,18 +122,22 @@ export const StudentDashboard: React.FC = () => {
   };
 
   // Handle Start Examination
-  const handleInitiateExamStart = (exam: any) => {
+  const handleInitiateExamStart = (exam: any, bypassSEB = false) => {
+    if (exam.requireSEB && !isSEBBrowser && !bypassSEB) {
+      setSelectedExamForSEB(exam);
+      return;
+    }
     if (exam.requireStartPassword) {
-      setSelectedExamForStart(exam);
+      setSelectedExamForStart({ ...exam, bypassSEB });
       setStartPasswordInput('');
       setStartError(null);
       setIsPasswordModalOpen(true);
     } else {
-      executeExamStart(exam.examCode);
+      executeExamStart(exam.examCode, undefined, bypassSEB);
     }
   };
 
-  const executeExamStart = async (code: string, password?: string) => {
+  const executeExamStart = async (code: string, password?: string, bypassSEB = false) => {
     setIsStartingExam(true);
     setStartError(null);
     try {
@@ -131,6 +147,7 @@ export const StudentDashboard: React.FC = () => {
         email: user?.email || dashboardData?.student?.email,
         rollNo: user?.studentIdNumber || dashboardData?.student?.studentIdNumber,
         startPassword: password,
+        bypassSEB,
       });
 
       sessionStorage.setItem('evaltech_attempt_id', res.data?.data?.attemptId);
@@ -147,7 +164,19 @@ export const StudentDashboard: React.FC = () => {
   const handlePasswordModalSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedExamForStart) return;
-    executeExamStart(selectedExamForStart.examCode, startPasswordInput);
+    executeExamStart(
+      selectedExamForStart.examCode,
+      startPasswordInput,
+      Boolean(selectedExamForStart.bypassSEB)
+    );
+  };
+
+  const handleResumeExam = (exam: any) => {
+    if (exam.requireSEB && !isSEBBrowser) {
+      setSelectedExamForSEB(exam);
+      return;
+    }
+    navigate(`/exam/${exam.examCode}/take`);
   };
 
   // Handle Change Password
@@ -460,8 +489,13 @@ export const StudentDashboard: React.FC = () => {
                               </span>
                             </div>
 
-                            {/* Password Protection Indicators */}
+                            {/* Security & Password Protection Indicators */}
                             <div className="flex flex-wrap gap-1.5 text-[10px]">
+                              {exam.requireSEB && (
+                                <span className="bg-indigo-100 text-indigo-900 border border-indigo-200/80 px-2 py-0.5 rounded font-bold flex items-center gap-1 shadow-xs">
+                                  <Shield className="w-3 h-3 text-indigo-brand" /> Safe Exam Browser Required
+                                </span>
+                              )}
                               {exam.requireStartPassword && (
                                 <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold flex items-center gap-1">
                                   <Lock className="w-3 h-3" /> Start Password
@@ -501,15 +535,101 @@ export const StudentDashboard: React.FC = () => {
                                 </Button>
                               </Link>
                             ) : isInProgress ? (
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                className="w-full text-xs"
-                                onClick={() => navigate(`/exam/${exam.examCode}/take`)}
-                                rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
-                              >
-                                Resume In-Progress Exam
-                              </Button>
+                              exam.requireSEB && !isSEBBrowser ? (
+                                <div className="space-y-2">
+                                  <a
+                                    href={`seb://${window.location.host}/api/exams/code/${exam.examCode}/seb-config`}
+                                    className="block w-full"
+                                  >
+                                    <Button
+                                      variant="primary"
+                                      size="sm"
+                                      className="w-full text-xs font-bold justify-center"
+                                      leftIcon={<Shield className="w-3.5 h-3.5 fill-white" />}
+                                    >
+                                      Resume in Safe Exam Browser
+                                    </Button>
+                                  </a>
+                                  <div className="flex gap-2">
+                                    <a
+                                      href={`/api/exams/code/${exam.examCode}/seb-config`}
+                                      download={`EvalTech-${exam.examCode}-SEB.seb`}
+                                      className="flex-1"
+                                    >
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="w-full text-[11px] justify-center bg-white"
+                                        leftIcon={<Download className="w-3 h-3" />}
+                                      >
+                                        .seb Config
+                                      </Button>
+                                    </a>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-[11px] text-midnight-600 hover:text-indigo-brand shrink-0"
+                                      onClick={() => setSelectedExamForSEB(exam)}
+                                    >
+                                      Options
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <Button
+                                  variant="primary"
+                                  size="sm"
+                                  className="w-full text-xs"
+                                  onClick={() => handleResumeExam(exam)}
+                                  rightIcon={<ArrowRight className="w-3.5 h-3.5" />}
+                                >
+                                  Resume In-Progress Exam
+                                </Button>
+                              )
+                            ) : exam.requireSEB && !isSEBBrowser ? (
+                              <div className="space-y-2">
+                                <a
+                                  href={`seb://${window.location.host}/api/exams/code/${exam.examCode}/seb-config`}
+                                  className="block w-full"
+                                >
+                                  <Button
+                                    variant="electric"
+                                    size="sm"
+                                    className="w-full text-xs font-bold justify-center shadow-sm"
+                                    leftIcon={<Shield className="w-3.5 h-3.5 fill-white" />}
+                                  >
+                                    Launch in Safe Exam Browser
+                                  </Button>
+                                </a>
+                                <div className="flex gap-2">
+                                  <a
+                                    href={`/api/exams/code/${exam.examCode}/seb-config`}
+                                    download={`EvalTech-${exam.examCode}-SEB.seb`}
+                                    className="flex-1"
+                                  >
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="w-full text-[11px] justify-center bg-white"
+                                      leftIcon={<Download className="w-3 h-3" />}
+                                    >
+                                      .seb Config
+                                    </Button>
+                                  </a>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-[11px] text-midnight-600 hover:text-indigo-brand shrink-0"
+                                    onClick={() => setSelectedExamForSEB(exam)}
+                                  >
+                                    Options
+                                  </Button>
+                                </div>
+                              </div>
                             ) : (
                               <Button
                                 variant="electric"
@@ -958,6 +1078,102 @@ export const StudentDashboard: React.FC = () => {
                 </Button>
               </div>
             </form>
+          </div>
+        </Modal>
+      )}
+
+      {/* MODAL 3: SAFE EXAM BROWSER REQUIRED */}
+      {selectedExamForSEB && (
+        <Modal
+          isOpen={Boolean(selectedExamForSEB)}
+          onClose={() => setSelectedExamForSEB(null)}
+          title="Safe Exam Browser Lockdown"
+          size="md"
+        >
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-midnight-950 text-white border border-indigo-500/40 shadow-inner">
+              <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shrink-0">
+                <Shield className="w-6 h-6 text-indigo-glow" />
+              </div>
+              <div>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-indigo-glow block">
+                  Security Lockdown Enforced
+                </span>
+                <h4 className="text-sm font-extrabold text-white">
+                  {selectedExamForSEB.title} ({selectedExamForSEB.examCode})
+                </h4>
+                <p className="text-xs text-pearl-300 mt-1 leading-relaxed">
+                  Your instructor has restricted this assessment to Safe Exam Browser (SEB) to guarantee exam integrity. You cannot attend this exam from a standard web browser.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2.5 pt-1">
+              <a
+                href={`seb://${window.location.host}/api/exams/code/${selectedExamForSEB.examCode}/seb-config`}
+                className="block w-full"
+              >
+                <Button
+                  variant="electric"
+                  size="md"
+                  className="w-full justify-center text-xs font-bold shadow-md"
+                  leftIcon={<Shield className="w-4 h-4 fill-white" />}
+                >
+                  Launch in Safe Exam Browser
+                </Button>
+              </a>
+
+              <a
+                href={`/api/exams/code/${selectedExamForSEB.examCode}/seb-config`}
+                download={`EvalTech-${selectedExamForSEB.examCode}-SEB.seb`}
+                className="block w-full"
+              >
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="md"
+                  className="w-full justify-center text-xs bg-pearl-50 border-pearl-300 text-midnight-800 hover:bg-pearl-100"
+                  leftIcon={<Download className="w-4 h-4" />}
+                >
+                  Download .seb Configuration File
+                </Button>
+              </a>
+            </div>
+
+            <div className="pt-2 border-t border-pearl-200 flex flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] text-midnight-600 gap-2">
+              <span>Don't have Safe Exam Browser installed?</span>
+              <a
+                href="https://safeexambrowser.org/download_en.html"
+                target="_blank"
+                rel="noreferrer"
+                className="text-indigo-brand hover:underline flex items-center gap-1 font-bold shrink-0"
+              >
+                Download SEB Client <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+
+            {/* Dev bypass for local testing */}
+            <div className="pt-2 text-center border-t border-pearl-100 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  const target = selectedExamForSEB;
+                  setSelectedExamForSEB(null);
+                  handleInitiateExamStart(target, true);
+                }}
+                className="text-[11px] text-midnight-400 hover:text-indigo-brand underline transition-colors"
+              >
+                Testing in local development? Bypass SEB
+              </button>
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={() => setSelectedExamForSEB(null)}
+              >
+                Close
+              </Button>
+            </div>
           </div>
         </Modal>
       )}
