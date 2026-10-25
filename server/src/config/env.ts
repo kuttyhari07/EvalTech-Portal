@@ -27,7 +27,7 @@ const envSchema = z.object({
   SMTP_PORT: z.string().default('587').transform((val) => parseInt(val, 10)),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
-  EMAIL_FROM: z.string().default('EvalTech System <noreply@evaltech.io>'),
+  EMAIL_FROM: z.string().default('EvalTech System <evaltech32@gmail.com>'),
 
   // AI Provider (Optional)
   GEMINI_API_KEY: z.string().optional(),

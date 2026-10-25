@@ -272,25 +272,32 @@ export class EvaluationService {
 
     // Dispatch result email to student upon evaluation completion
     if (!result.emailSent && attempt.studentInfo?.email) {
-      EmailService.sendExamResultEmail(
-        attempt.studentInfo.email,
-        attempt.studentInfo.name,
-        exam.title,
-        finalScore,
-        totalMaxMarks,
-        percentage,
-        isPassed,
-        exam.examCode,
-        {
-          programmingScore: totalProgrammingScore,
-          programmingMaxScore: totalProgrammingMaxMarks,
-          evaluationStatus,
-        }
-      ).catch((err) => console.error('Error dispatching result email:', err.message));
+      try {
+        const studentName = attempt.studentInfo.name || 'Student';
+        const sent = await EmailService.sendExamResultEmail(
+          attempt.studentInfo.email,
+          studentName,
+          exam.title,
+          finalScore,
+          totalMaxMarks,
+          percentage,
+          isPassed,
+          exam.examCode,
+          {
+            programmingScore: totalProgrammingScore,
+            programmingMaxScore: totalProgrammingMaxMarks,
+            evaluationStatus,
+          }
+        );
 
-      result.emailSent = true;
-      result.emailSentAt = new Date();
-      await result.save();
+        if (sent) {
+          result.emailSent = true;
+          result.emailSentAt = new Date();
+          await result.save();
+        }
+      } catch (err: any) {
+        console.error('[Evaluation] Failed to dispatch result email:', err.message);
+      }
     }
 
     return result;

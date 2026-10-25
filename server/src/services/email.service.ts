@@ -63,10 +63,10 @@ export class EmailService {
   }
 
   private static getSenderInfo() {
-    const fromStr = config.EMAIL_FROM || 'EvalTech <noreply@evaltech.io>';
+    const fromStr = config.EMAIL_FROM || 'EvalTech <evaltech32@gmail.com>';
     const match = fromStr.match(/^(?:(.*)<)?([^<>]+)>?$/);
     const name = match?.[1]?.trim() || 'EvalTech';
-    const email = match?.[2]?.trim() || 'noreply@evaltech.io';
+    const email = match?.[2]?.trim() || 'evaltech32@gmail.com';
     return { name, email };
   }
 
