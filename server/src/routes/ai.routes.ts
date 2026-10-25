@@ -7,6 +7,7 @@ const router = Router();
 router.use(authenticate);
 
 router.post('/generate-questions', AIController.generateQuestions);
+router.post('/generate-programming-question', AIController.generateProgrammingQuestion);
 router.post('/save-approved', AIController.saveApprovedQuestions);
 router.post('/assistant', AIController.assistantDraft);
 

@@ -230,6 +230,49 @@ export class EmailService {
     return this.sendMail(email, `Invitation to join ${orgName} on EvalTech`, html);
   }
 
+  static async sendStudentWelcomeEmail(
+    email: string,
+    studentName: string,
+    rollNumber: string,
+    tempPassword = 'Test@123',
+    staffOrOrgName?: string
+  ): Promise<boolean> {
+    const loginLink = `${config.CLIENT_URL}/student/login`;
+    const html = this.wrapTemplate(
+      'Welcome to EvalTech Examination Portal',
+      `
+        <p>Hello ${studentName},</p>
+        <p>You have been enrolled as a student on the <strong>EvalTech Examination Portal</strong>${staffOrOrgName ? ` by <strong>${staffOrOrgName}</strong>` : ''}.</p>
+        <p>You can now log in to the student portal to view upcoming examinations, attempt scheduled tests, and review your performance analytics.</p>
+        
+        <div style="background: #0F172A; padding: 20px; border-radius: 8px; border-left: 4px solid #4F46E5; margin: 20px 0;">
+          <h4 style="margin: 0 0 12px 0; color: #818CF8; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Your Student Login Credentials</h4>
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #E2E8F0;">
+            <tr style="border-bottom: 1px solid #1E293B;">
+              <td style="padding: 6px 0; color: #94A3B8;">Student ID / Roll No:</td>
+              <td style="padding: 6px 0; text-align: right; font-family: monospace; font-weight: bold; color: #FFFFFF;">${rollNumber}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #1E293B;">
+              <td style="padding: 6px 0; color: #94A3B8;">Registered Email:</td>
+              <td style="padding: 6px 0; text-align: right; font-weight: bold; color: #FFFFFF;">${email}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #94A3B8;">Initial Password:</td>
+              <td style="padding: 6px 0; text-align: right; font-family: monospace; font-weight: bold; color: #10B981;">${tempPassword}</td>
+            </tr>
+          </table>
+        </div>
+
+        <p style="font-size: 13px; color: #94A3B8;"><em>Tip: You can change your password anytime after logging in from your Student Dashboard.</em></p>
+
+        <div style="text-align: center; margin-top: 24px;">
+          <a href="${loginLink}" class="btn">Login to Student Portal</a>
+        </div>
+      `
+    );
+    return this.sendMail(email, 'Welcome to EvalTech - Your Student Portal Login Details', html);
+  }
+
   static async sendExamNotification(
     email: string,
     studentName: string,

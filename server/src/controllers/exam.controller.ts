@@ -180,7 +180,7 @@ export class ExamController {
 
   static async publishExam(req: AuthRequest, res: Response): Promise<void> {
     const { id } = req.params;
-    const { notifyStudents = false } = req.body;
+    const { notifyStudents = true } = req.body;
 
     const exam = await Exam.findById(id);
     if (!exam) {
@@ -196,22 +196,43 @@ export class ExamController {
     exam.status = EXAM_STATUS.PUBLISHED;
     await exam.save();
 
-    // Optionally notify enrolled students
-    if (notifyStudents && exam.classIds.length > 0) {
-      const enrollments = await ClassEnrollment.find({
-        classId: { $in: exam.classIds },
-        status: 'active',
-      }).populate('studentId');
+    // Notify enrolled or staff students
+    if (notifyStudents !== false) {
+      let targetStudents: any[] = [];
 
-      for (const enr of enrollments) {
-        const student: any = enr.studentId;
-        if (student && student.email) {
+      if (exam.classIds && exam.classIds.length > 0) {
+        const enrollments = await ClassEnrollment.find({
+          classId: { $in: exam.classIds },
+          status: 'active',
+        }).populate('studentId');
+
+        for (const enr of enrollments) {
+          if (enr.studentId) targetStudents.push(enr.studentId);
+        }
+      }
+
+      // If no class assigned or no enrollments found, notify all students of this staff/organization
+      if (targetStudents.length === 0) {
+        const staffStudents = await Student.find({
+          $or: [
+            { createdByStaffId: req.user!.userId },
+            ...(req.user?.organizationId ? [{ organizationId: req.user.organizationId }] : []),
+          ],
+          status: 'active',
+        });
+        targetStudents.push(...staffStudents);
+      }
+
+      const seenEmails = new Set<string>();
+      for (const student of targetStudents) {
+        if (student && student.email && !seenEmails.has(student.email.toLowerCase())) {
+          seenEmails.add(student.email.toLowerCase());
           EmailService.sendExamNotification(
             student.email,
-            `${student.firstName} ${student.lastName}`,
+            `${student.firstName} ${student.lastName}`.trim(),
             exam.title,
             exam.examCode,
-            exam.startsAt,
+            exam.startsAt || new Date(),
             exam.durationMinutes
           ).catch(console.error);
         }

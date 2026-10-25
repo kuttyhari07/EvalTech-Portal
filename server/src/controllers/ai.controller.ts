@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { z } from 'zod';
 import { AIQuestionService, GeneratedQuestionItemSchema } from '../services/aiQuestion.service';
-import { Question } from '../models';
+import { Question, QuestionBank } from '../models';
 import { AuthRequest } from '../middleware/auth';
 import { sendSuccess, sendError } from '../utils/response';
 
@@ -13,6 +13,12 @@ const generateSchema = z.object({
   questionTypes: z.array(z.string()).optional(),
   marksPerQuestion: z.number().min(1).default(1),
   language: z.string().default('English'),
+});
+
+const generateProgSchema = z.object({
+  subject: z.string().min(1, 'Subject is required'),
+  topic: z.string().min(1, 'Topic is required'),
+  difficulty: z.enum(['easy', 'medium', 'hard']).default('medium'),
 });
 
 export class AIController {
@@ -34,8 +40,22 @@ export class AIController {
     );
   }
 
+  static async generateProgrammingQuestion(req: AuthRequest, res: Response): Promise<void> {
+    const data = generateProgSchema.parse(req.body);
+    const userId = req.user!.userId;
+    const orgId = req.user?.organizationId;
+
+    const question = await AIQuestionService.generateProgrammingQuestion({
+      userId,
+      organizationId: orgId,
+      ...data,
+    });
+
+    sendSuccess(res, question, 'AI Programming problem generated successfully.');
+  }
+
   static async saveApprovedQuestions(req: AuthRequest, res: Response): Promise<void> {
-    const { questions } = req.body;
+    const { questions, questionBankId } = req.body;
     if (!Array.isArray(questions) || questions.length === 0) {
       sendError(res, 'No questions provided to save.', 400);
       return;
@@ -51,11 +71,18 @@ export class AIController {
         ...validated,
         creatorId: userId,
         organizationId: orgId,
+        questionBankId: questionBankId || undefined,
         isApproved: true,
         approvalStatus: 'approved',
         aiGenerated: true,
       });
       savedDocs.push(doc);
+    }
+
+    if (questionBankId && savedDocs.length > 0) {
+      await QuestionBank.findByIdAndUpdate(questionBankId, {
+        $addToSet: { questionIds: { $each: savedDocs.map((d) => d._id) } },
+      });
     }
 
     sendSuccess(

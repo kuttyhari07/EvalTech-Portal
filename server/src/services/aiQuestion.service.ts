@@ -277,4 +277,158 @@ export class AIQuestionService {
 
     return questions;
   }
+
+  /**
+   * Generates a complete coding/programming problem with test cases and starter code using Gemini AI.
+   */
+  static async generateProgrammingQuestion(params: {
+    userId: string;
+    organizationId?: string;
+    subject: string;
+    topic: string;
+    difficulty?: 'easy' | 'medium' | 'hard';
+  }): Promise<any> {
+    const difficulty = params.difficulty || 'medium';
+    const candidateModels = [
+      config.GEMINI_MODEL || 'gemini-3.5-flash',
+      'gemini-flash-lite-latest',
+      'gemini-3.1-flash-lite',
+      'gemini-3.5-flash-lite',
+    ];
+
+    const prompt = `
+      You are an expert computer science professor and competitive programming problem setter.
+      Generate a complete, high-quality, production-ready coding challenge for:
+      Subject: ${params.subject}
+      Topic: ${params.topic}
+      Difficulty: ${difficulty}
+
+      Respond STRICTLY with a single valid JSON object adhering to this schema (do NOT include markdown code blocks, do NOT write anything outside the JSON):
+      {
+        "title": "Title of the problem",
+        "problemStatement": "Clear and detailed problem statement describing the task.",
+        "inputFormat": "Clear specification of input lines and data types.",
+        "outputFormat": "Clear specification of expected output format.",
+        "constraints": "e.g. 1 <= N <= 10^5",
+        "sampleInput": "Sample standard input data",
+        "sampleExpectedOutput": "Expected standard output for sample input",
+        "sampleExplanation": "Detailed step by step explanation of the sample case",
+        "defaultMarks": 10,
+        "timeLimitSeconds": 2,
+        "memoryLimitMb": 256,
+        "starterCode": {
+          "python": "import sys\\n\\ndef main():\\n    # Write your solution here\\n    pass\\n\\nif __name__ == '__main__':\\n    main()\\n",
+          "java": "import java.util.*;\\n\\npublic class Main {\\n    public static void main(String[] args) {\\n        Scanner sc = new Scanner(System.in);\\n        // Write your solution here\\n        sc.close();\\n    }\\n}\\n",
+          "cpp": "#include <iostream>\\nusing namespace std;\\n\\nint main() {\\n    // Write your solution here\\n    return 0;\\n}\\n",
+          "c": "#include <stdio.h>\\n\\nint main() {\\n    // Write your solution here\\n    return 0;\\n}\\n"
+        },
+        "testCases": [
+          {
+            "input": "Sample input value",
+            "expectedOutput": "Sample expected output",
+            "isHidden": false,
+            "isSample": true,
+            "weight": 5,
+            "description": "Sample test case"
+          },
+          {
+            "input": "Edge case input value",
+            "expectedOutput": "Expected output for edge case",
+            "isHidden": true,
+            "isSample": false,
+            "weight": 5,
+            "description": "Hidden test case"
+          }
+        ]
+      }
+    `;
+
+    if (config.GEMINI_API_KEY) {
+      for (const model of candidateModels) {
+        try {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.GEMINI_API_KEY}`;
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+            }),
+          });
+
+          if (!res.ok) {
+            console.warn(`[AIService] Programming question gen model ${model} HTTP ${res.status}`);
+            continue;
+          }
+
+          const data: any = await res.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (!text) continue;
+          const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+          const parsed = JSON.parse(cleanJson);
+
+          // Log AI usage
+          await AIUsageLog.create({
+            userId: params.userId,
+            organizationId: params.organizationId,
+            prompt: `Generate coding question for ${params.subject} / ${params.topic}`,
+            action: 'generate_coding_question',
+            questionCountGenerated: 1,
+            tokensUsed: 400,
+            success: true,
+          }).catch(() => {});
+
+          return parsed;
+        } catch (err: any) {
+          console.warn(`[AIService] Failed with model ${model}:`, err.message);
+        }
+      }
+    }
+
+    // Fallback if AI service unavailable
+    return this.generateFallbackProgrammingQuestion(params.subject, params.topic, difficulty);
+  }
+
+  static generateFallbackProgrammingQuestion(
+    subject: string,
+    topic: string,
+    difficulty: 'easy' | 'medium' | 'hard'
+  ): any {
+    return {
+      title: `${topic} Challenge: Optimal Processing`,
+      problemStatement: `Given a collection of data elements representing ${topic} in ${subject}, design an optimal algorithm to process the elements and output the aggregated result based on standard problem constraints.`,
+      inputFormat: `The first line contains an integer N, the number of test elements.\nThe second line contains N space-separated integers.`,
+      outputFormat: `Print the calculated result on a single line.`,
+      constraints: `1 <= N <= 10^5\n-10^9 <= Value <= 10^9`,
+      sampleInput: `5\n10 20 30 40 50`,
+      sampleExpectedOutput: `150`,
+      sampleExplanation: `Sum of all array elements: 10 + 20 + 30 + 40 + 50 = 150.`,
+      defaultMarks: 10,
+      timeLimitSeconds: 2,
+      memoryLimitMb: 256,
+      starterCode: {
+        python: `import sys\n\ndef main():\n    lines = sys.stdin.read().split()\n    if not lines:\n        return\n    n = int(lines[0])\n    nums = [int(x) for x in lines[1:n+1]]\n    # Solve:\n    print(sum(nums))\n\nif __name__ == '__main__':\n    main()\n`,
+        java: `import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        if (sc.hasNextInt()) {\n            int n = sc.nextInt();\n            long sum = 0;\n            for (int i = 0; i < n; i++) {\n                sum += sc.nextInt();\n            }\n            System.out.println(sum);\n        }\n        sc.close();\n    }\n}\n`,
+        cpp: `#include <iostream>\n#include <vector>\nusing namespace std;\n\nint main() {\n    ios_base::sync_with_stdio(false);\n    cin.tie(NULL);\n    int n;\n    if (cin >> n) {\n        long long sum = 0;\n        for (int i = 0; i < n; i++) {\n            long long val;\n            cin >> val;\n            sum += val;\n        }\n        cout << sum << "\\n";\n    }\n    return 0;\n}\n`,
+        c: `#include <stdio.h>\n\nint main() {\n    int n;\n    if (scanf("%d", &n) == 1) {\n        long long sum = 0;\n        for (int i = 0; i < n; i++) {\n            long long val;\n            scanf("%lld", &val);\n            sum += val;\n        }\n        printf("%lld\\n", sum);\n    }\n    return 0;\n}\n`,
+      },
+      testCases: [
+        {
+          input: `5\n10 20 30 40 50`,
+          expectedOutput: `150`,
+          isHidden: false,
+          isSample: true,
+          weight: 5,
+          description: `Sample case with positive integers`,
+        },
+        {
+          input: `3\n-5 10 -2`,
+          expectedOutput: `3`,
+          isHidden: true,
+          isSample: false,
+          weight: 5,
+          description: `Hidden case with negative integers`,
+        },
+      ],
+    };
+  }
 }

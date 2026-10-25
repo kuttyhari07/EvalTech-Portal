@@ -22,6 +22,7 @@ export interface IQuestion extends Document {
   tags: string[];
   creatorId: mongoose.Types.ObjectId;
   organizationId?: mongoose.Types.ObjectId;
+  questionBankId?: mongoose.Types.ObjectId;
   programmingQuestionId?: mongoose.Types.ObjectId;
   approvalStatus: 'approved' | 'pending' | 'rejected';
   isApproved: boolean;
@@ -66,6 +67,7 @@ const questionSchema = new Schema<IQuestion>(
     tags: [{ type: String, index: true }],
     creatorId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     organizationId: { type: Schema.Types.ObjectId, ref: 'Organization', index: true },
+    questionBankId: { type: Schema.Types.ObjectId, ref: 'QuestionBank', index: true },
     programmingQuestionId: { type: Schema.Types.ObjectId, ref: 'ProgrammingQuestion', index: true },
     approvalStatus: {
       type: String,

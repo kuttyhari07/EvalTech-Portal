@@ -270,8 +270,8 @@ export class EvaluationService {
     attempt.status = 'evaluated';
     await attempt.save();
 
-    // If released immediately and evaluation is complete, dispatch email if not already sent
-    if (isReleased && !result.emailSent && evaluationStatus === 'completed' && attempt.studentInfo?.email) {
+    // Dispatch result email to student upon evaluation completion
+    if (!result.emailSent && attempt.studentInfo?.email) {
       EmailService.sendExamResultEmail(
         attempt.studentInfo.email,
         attempt.studentInfo.name,

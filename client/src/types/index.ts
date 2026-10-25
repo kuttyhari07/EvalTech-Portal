@@ -223,9 +223,24 @@ export interface QuestionItem {
   explanation?: string;
   defaultMarks: number;
   negativeMarks: number;
+  questionBankId?: string;
+  programmingQuestionId?: any;
   tags: string[];
   aiGenerated: boolean;
   creatorId: string;
+  createdAt: string;
+}
+
+export interface QuestionBankItem {
+  _id: string;
+  title: string;
+  description?: string;
+  subject: string;
+  creatorId: string;
+  organizationId?: string;
+  questionIds: (QuestionItem | any)[];
+  tags: string[];
+  isPublicWithinOrg: boolean;
   createdAt: string;
 }
 

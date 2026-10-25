@@ -4,6 +4,7 @@ import { Student, ClassEnrollment, Class } from '../models';
 import { AuthRequest } from '../middleware/auth';
 import { sendSuccess, sendError } from '../utils/response';
 import { CapacityService } from '../services/capacity.service';
+import { EmailService } from '../services/email.service';
 import { ROLES } from '../constants';
 import { recordAuditLog } from '../utils/audit';
 
@@ -37,6 +38,7 @@ export class StudentController {
     }
 
     let student = await Student.findOne(filter);
+    let isNewStudent = false;
 
     // If new student, verify capacity limit before inserting
     if (!student) {
@@ -52,6 +54,7 @@ export class StudentController {
         createdByStaffId: userId,
         status: 'active',
       });
+      isNewStudent = true;
     }
 
     // Enroll into class if provided
@@ -70,6 +73,18 @@ export class StudentController {
       entityId: student._id.toString(),
       metadata: { studentEmail: student.email, classId: data.classId },
     });
+
+    // Send welcome credentials email to new student
+    if (isNewStudent) {
+      const inviterName = req.user?.dbUser?.name || 'Your Institution';
+      EmailService.sendStudentWelcomeEmail(
+        student.email,
+        `${student.firstName} ${student.lastName}`.trim(),
+        student.studentIdNumber,
+        'Test@123',
+        inviterName
+      ).catch(console.error);
+    }
 
     sendSuccess(res, student, 'Student added and enrolled successfully.', 201);
   }
@@ -159,6 +174,18 @@ export class StudentController {
       entity: 'Student',
       metadata: { total: allStudents.length, newlyCreated: insertedDocs.length, classId },
     });
+
+    // Send welcome emails to all newly created students
+    const inviterName = req.user?.dbUser?.name || 'Your Institution';
+    for (const newStudent of insertedDocs) {
+      EmailService.sendStudentWelcomeEmail(
+        newStudent.email,
+        `${newStudent.firstName} ${newStudent.lastName}`.trim(),
+        newStudent.studentIdNumber,
+        'Test@123',
+        inviterName
+      ).catch(console.error);
+    }
 
     sendSuccess(
       res,

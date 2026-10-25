@@ -3,6 +3,7 @@ import { z } from 'zod';
 import mongoose from 'mongoose';
 import {
   Question,
+  QuestionBank,
   ProgrammingQuestion,
   ProgrammingTestCase,
 } from '../models';
@@ -68,6 +69,7 @@ const createProgrammingQuestionSchema = z.object({
   allowedAttempts: z.number().min(1).default(10),
   scoringPolicy: z.enum([SCORING_POLICIES.ALL_OR_NOTHING, SCORING_POLICIES.WEIGHTED]).default(SCORING_POLICIES.WEIGHTED),
   testCases: z.array(testCaseInputSchema).optional(),
+  questionBankId: z.string().optional(),
 });
 
 export class ProgrammingQuestionController {
@@ -125,7 +127,16 @@ export class ProgrammingQuestionController {
 
     // Link back to Question
     baseQuestion.programmingQuestionId = progQuestion._id as mongoose.Types.ObjectId;
+    if (data.questionBankId) {
+      baseQuestion.questionBankId = new mongoose.Types.ObjectId(data.questionBankId);
+    }
     await baseQuestion.save();
+
+    if (data.questionBankId) {
+      await QuestionBank.findByIdAndUpdate(data.questionBankId, {
+        $addToSet: { questionIds: baseQuestion._id },
+      });
+    }
 
     // 3. Create initial test cases if provided
     const createdTestCases = [];

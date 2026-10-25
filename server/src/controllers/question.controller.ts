@@ -29,6 +29,7 @@ const createQuestionSchema = z.object({
   negativeMarks: z.number().default(0),
   tags: z.array(z.string()).default([]),
   aiGenerated: z.boolean().default(false),
+  questionBankId: z.string().optional(),
 });
 
 export class QuestionController {
@@ -39,18 +40,25 @@ export class QuestionController {
 
     const question = await Question.create({
       ...data,
+      questionBankId: data.questionBankId || undefined,
       creatorId: userId,
       organizationId: orgId,
       approvalStatus: 'approved',
       isApproved: true,
     });
 
+    if (data.questionBankId) {
+      await QuestionBank.findByIdAndUpdate(data.questionBankId, {
+        $addToSet: { questionIds: question._id },
+      });
+    }
+
     await recordAuditLog({
       req,
       action: 'QUESTION_CREATE',
       entity: 'Question',
       entityId: question._id.toString(),
-      metadata: { subject: question.subject, type: question.type },
+      metadata: { subject: question.subject, type: question.type, questionBankId: data.questionBankId },
     });
 
     sendSuccess(res, question, 'Question created successfully.', 201);
@@ -60,7 +68,7 @@ export class QuestionController {
     const userId = req.user!.userId;
     const orgId = req.user?.organizationId;
     const role = req.user!.role;
-    const { subject, topic, difficulty, type, search, page = '1', limit = '50' } = req.query;
+    const { subject, topic, difficulty, type, search, questionBankId, page = '1', limit = '100' } = req.query;
 
     const query: any = {};
 
@@ -76,6 +84,7 @@ export class QuestionController {
     if (topic) query.topic = topic;
     if (difficulty) query.difficulty = difficulty;
     if (type) query.type = type;
+    if (questionBankId) query.questionBankId = questionBankId;
     if (search) {
       query.text = { $regex: search as string, $options: 'i' };
     }
@@ -118,8 +127,13 @@ export class QuestionController {
       return;
     }
 
+    // Unlink from any question bank
+    await QuestionBank.updateMany({ questionIds: id }, { $pull: { questionIds: id } });
+
     sendSuccess(res, null, 'Question deleted successfully.');
   }
+
+  // --- Question Bank Operations ---
 
   static async listQuestionBanks(req: AuthRequest, res: Response): Promise<void> {
     const userId = req.user!.userId;
@@ -129,8 +143,25 @@ export class QuestionController {
       $or: [{ creatorId: userId }, ...(orgId ? [{ organizationId: orgId, isPublicWithinOrg: true }] : [])],
     };
 
-    const banks = await QuestionBank.find(query).populate('questionIds');
+    const banks = await QuestionBank.find(query).populate('questionIds').sort({ createdAt: -1 });
     sendSuccess(res, banks);
+  }
+
+  static async getQuestionBankById(req: AuthRequest, res: Response): Promise<void> {
+    const { id } = req.params;
+    const bank = await QuestionBank.findById(id).populate({
+      path: 'questionIds',
+      populate: {
+        path: 'programmingQuestionId',
+      },
+    });
+
+    if (!bank) {
+      sendError(res, 'Question bank not found', 404);
+      return;
+    }
+
+    sendSuccess(res, bank);
   }
 
   static async createQuestionBank(req: AuthRequest, res: Response): Promise<void> {
@@ -154,6 +185,93 @@ export class QuestionController {
       isPublicWithinOrg,
     });
 
-    sendSuccess(res, bank, 'Question bank created.', 201);
+    if (questionIds.length > 0) {
+      await Question.updateMany(
+        { _id: { $in: questionIds } },
+        { $set: { questionBankId: bank._id } }
+      );
+    }
+
+    sendSuccess(res, bank, 'Question bank created successfully.', 201);
+  }
+
+  static async updateQuestionBank(req: AuthRequest, res: Response): Promise<void> {
+    const { id } = req.params;
+    const { title, description, subject, tags, isPublicWithinOrg } = req.body;
+
+    const bank = await QuestionBank.findByIdAndUpdate(
+      id,
+      { $set: { title, description, subject, tags, isPublicWithinOrg } },
+      { new: true }
+    );
+
+    if (!bank) {
+      sendError(res, 'Question bank not found', 404);
+      return;
+    }
+
+    sendSuccess(res, bank, 'Question bank updated successfully.');
+  }
+
+  static async deleteQuestionBank(req: AuthRequest, res: Response): Promise<void> {
+    const { id } = req.params;
+    const bank = await QuestionBank.findByIdAndDelete(id);
+
+    if (!bank) {
+      sendError(res, 'Question bank not found', 404);
+      return;
+    }
+
+    // Unset questionBankId from questions (questions themselves are kept)
+    await Question.updateMany({ questionBankId: id }, { $unset: { questionBankId: 1 } });
+
+    sendSuccess(res, null, 'Question bank removed.');
+  }
+
+  static async addQuestionsToBank(req: AuthRequest, res: Response): Promise<void> {
+    const { id } = req.params; // bankId
+    const { questionIds = [] } = req.body;
+
+    if (!Array.isArray(questionIds) || questionIds.length === 0) {
+      sendError(res, 'Please provide question IDs to add to this bank.', 400);
+      return;
+    }
+
+    const bank = await QuestionBank.findByIdAndUpdate(
+      id,
+      { $addToSet: { questionIds: { $each: questionIds } } },
+      { new: true }
+    ).populate('questionIds');
+
+    if (!bank) {
+      sendError(res, 'Question bank not found', 404);
+      return;
+    }
+
+    await Question.updateMany(
+      { _id: { $in: questionIds } },
+      { $set: { questionBankId: bank._id } }
+    );
+
+    sendSuccess(res, bank, `Added ${questionIds.length} question(s) to ${bank.title}.`);
+  }
+
+  static async removeQuestionFromBank(req: AuthRequest, res: Response): Promise<void> {
+    const { id, questionId } = req.params;
+
+    const bank = await QuestionBank.findByIdAndUpdate(
+      id,
+      { $pull: { questionIds: questionId } },
+      { new: true }
+    );
+
+    if (!bank) {
+      sendError(res, 'Question bank not found', 404);
+      return;
+    }
+
+    await Question.findByIdAndUpdate(questionId, { $unset: { questionBankId: 1 } });
+
+    sendSuccess(res, bank, 'Question removed from bank.');
   }
 }

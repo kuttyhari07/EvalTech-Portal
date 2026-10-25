@@ -23,6 +23,9 @@ interface ProgrammingQuestionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreated: () => void;
+  questionBankId?: string;
+  initialSubject?: string;
+  initialTopic?: string;
 }
 
 interface TestCaseDraft {
@@ -38,11 +41,14 @@ export const ProgrammingQuestionModal: React.FC<ProgrammingQuestionModalProps> =
   isOpen,
   onClose,
   onCreated,
+  questionBankId,
+  initialSubject,
+  initialTopic,
 }) => {
   const [activeTab, setActiveTab] = useState<'basic' | 'starter' | 'testcases'>('basic');
   const [title, setTitle] = useState('');
-  const [subject, setSubject] = useState('');
-  const [topic, setTopic] = useState('');
+  const [subject, setSubject] = useState(initialSubject || '');
+  const [topic, setTopic] = useState(initialTopic || '');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [problemStatement, setProblemStatement] = useState('');
   const [descriptionMarkdown, setDescriptionMarkdown] = useState('');
@@ -53,6 +59,14 @@ export const ProgrammingQuestionModal: React.FC<ProgrammingQuestionModalProps> =
   const [timeLimitSeconds, setTimeLimitSeconds] = useState(2);
   const [memoryLimitMb, setMemoryLimitMb] = useState(256);
   const [scoringPolicy, setScoringPolicy] = useState<'weighted' | 'all_or_nothing'>('weighted');
+
+  // AI Generator state
+  const [showAiPrompt, setShowAiPrompt] = useState(false);
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [aiTopic, setAiTopic] = useState(initialTopic || '');
+  const [aiSubject, setAiSubject] = useState(initialSubject || 'Computer Science');
+  const [aiDifficulty, setAiDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+  const [aiSuccessMsg, setAiSuccessMsg] = useState<string | null>(null);
 
   // Starter code tabs
   const [starterLanguage, setStarterLanguage] = useState<ProgrammingLanguage>('python');
@@ -113,6 +127,66 @@ export const ProgrammingQuestionModal: React.FC<ProgrammingQuestionModalProps> =
     setTestCases(updated);
   };
 
+  const handleGenerateAiProblem = async () => {
+    if (!aiTopic.trim()) {
+      setError('Please provide a topic or concept for AI problem generation.');
+      return;
+    }
+    setIsAiGenerating(true);
+    setError(null);
+    try {
+      const res = await api.post('/ai/generate-programming-question', {
+        subject: aiSubject || 'Computer Science',
+        topic: aiTopic.trim(),
+        difficulty: aiDifficulty,
+      });
+
+      const data = res.data?.data;
+      if (data) {
+        setTitle(data.title || '');
+        setSubject(data.subject || aiSubject || 'Computer Science');
+        setTopic(data.topic || aiTopic);
+        setDifficulty(data.difficulty || aiDifficulty);
+        setProblemStatement(data.problemStatement || '');
+        setDescriptionMarkdown(data.problemDescriptionMarkdown || '');
+        setInputFormat(data.inputFormat || '');
+        setOutputFormat(data.outputFormat || '');
+        setConstraints(data.constraints || '');
+        setDefaultMarks(data.defaultMarks || 10);
+        setTimeLimitSeconds(data.timeLimitSeconds || 2);
+        setMemoryLimitMb(data.memoryLimitMb || 256);
+
+        if (data.starterCode) {
+          setStarterCode((prev) => ({
+            ...prev,
+            ...data.starterCode,
+          }));
+        }
+
+        if (Array.isArray(data.testCases) && data.testCases.length > 0) {
+          setTestCases(
+            data.testCases.map((tc: any) => ({
+              input: tc.input || '',
+              expectedOutput: tc.expectedOutput || '',
+              isHidden: !!tc.isHidden,
+              isSample: !!tc.isSample,
+              weight: Number(tc.weight) || 5,
+              description: tc.description || '',
+            }))
+          );
+        }
+
+        setAiSuccessMsg(`✨ AI generated "${data.title}" successfully! Review details and test cases below.`);
+        setShowAiPrompt(false);
+        setActiveTab('basic');
+      }
+    } catch (err: any) {
+      setError(err.message || 'AI problem generation failed. Please try again.');
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -130,6 +204,7 @@ export const ProgrammingQuestionModal: React.FC<ProgrammingQuestionModalProps> =
     setIsSubmitting(true);
     try {
       await api.post('/programming-questions', {
+        questionBankId,
         title,
         subject,
         topic,
@@ -173,45 +248,142 @@ export const ProgrammingQuestionModal: React.FC<ProgrammingQuestionModalProps> =
           </div>
         )}
 
-        {/* Modal Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-pearl-200 pb-2">
+        {aiSuccessMsg && (
+          <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{aiSuccessMsg}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAiSuccessMsg(null)}
+              className="text-emerald-700 text-xs font-bold hover:underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* Modal Navigation Tabs & AI Action */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 border-b border-pearl-200 pb-2">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+            <button
+              type="button"
+              onClick={() => setActiveTab('basic')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+                activeTab === 'basic'
+                  ? 'bg-indigo-brand text-white shadow-subtle'
+                  : 'text-midnight-600 hover:bg-pearl-100'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              Problem & Details
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('starter')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+                activeTab === 'starter'
+                  ? 'bg-indigo-brand text-white shadow-subtle'
+                  : 'text-midnight-600 hover:bg-pearl-100'
+              }`}
+            >
+              <Code2 className="w-3.5 h-3.5" />
+              Starter Code Templates
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('testcases')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+                activeTab === 'testcases'
+                  ? 'bg-indigo-brand text-white shadow-subtle'
+                  : 'text-midnight-600 hover:bg-pearl-100'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              Test Cases ({testCases.length})
+            </button>
+          </div>
+
           <button
             type="button"
-            onClick={() => setActiveTab('basic')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${
-              activeTab === 'basic'
-                ? 'bg-indigo-brand text-white shadow-subtle'
-                : 'text-midnight-600 hover:bg-pearl-100'
-            }`}
+            onClick={() => setShowAiPrompt(!showAiPrompt)}
+            className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 shadow-sm shrink-0"
           >
-            <FileText className="w-3.5 h-3.5" />
-            Problem & Details
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('starter')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${
-              activeTab === 'starter'
-                ? 'bg-indigo-brand text-white shadow-subtle'
-                : 'text-midnight-600 hover:bg-pearl-100'
-            }`}
-          >
-            <Code2 className="w-3.5 h-3.5" />
-            Starter Code Templates
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('testcases')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${
-              activeTab === 'testcases'
-                ? 'bg-indigo-brand text-white shadow-subtle'
-                : 'text-midnight-600 hover:bg-pearl-100'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            Test Cases ({testCases.length})
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <span>{showAiPrompt ? 'Hide AI Generator' : '✨ AI Generate Problem'}</span>
           </button>
         </div>
+
+        {/* AI Generator Inline Drawer */}
+        {showAiPrompt && (
+          <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-50/80 via-purple-50/50 to-pink-50/30 border border-indigo-200 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-indigo-600" />
+                <span className="text-xs font-extrabold text-indigo-950 uppercase tracking-wider">
+                  AI Coding Question Generator (Powered by Gemini AI)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAiPrompt(false)}
+                className="text-xs text-midnight-500 hover:text-midnight-900 font-medium"
+              >
+                Close
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-[11px] font-bold text-midnight-700 block mb-1">Subject</label>
+                <input
+                  type="text"
+                  value={aiSubject}
+                  onChange={(e) => setAiSubject(e.target.value)}
+                  placeholder="e.g. Data Structures & Algorithms"
+                  className="w-full text-xs rounded-lg border border-pearl-300 p-2 bg-white text-midnight-900 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-midnight-700 block mb-1">Topic / Concept *</label>
+                <input
+                  type="text"
+                  value={aiTopic}
+                  onChange={(e) => setAiTopic(e.target.value)}
+                  placeholder="e.g. Binary Search, Two Pointers, Palindrome"
+                  className="w-full text-xs rounded-lg border border-pearl-300 p-2 bg-white text-midnight-900 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-midnight-700 block mb-1">Difficulty</label>
+                <select
+                  value={aiDifficulty}
+                  onChange={(e) => setAiDifficulty(e.target.value as any)}
+                  className="w-full text-xs rounded-lg border border-pearl-300 p-2 bg-white text-midnight-900 focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-[11px] text-midnight-500">
+                Gemini will craft problem description, input/output formats, sample cases, starter templates, and hidden test cases.
+              </span>
+              <Button
+                type="button"
+                variant="electric"
+                size="sm"
+                leftIcon={<Sparkles className="w-3.5 h-3.5 text-amber-300" />}
+                disabled={isAiGenerating}
+                onClick={handleGenerateAiProblem}
+              >
+                {isAiGenerating ? 'Generating with Gemini AI...' : 'Generate Problem'}
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Tab 1: Problem & Details */}
         {activeTab === 'basic' && (
