@@ -1,7 +1,9 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
-import { Question, QuestionBank, User, Student, ProgrammingQuestion } from '../models';
+import { Question, QuestionBank, User, Student, ProgrammingQuestion, ProgrammingTestCase } from '../models';
 import { sendSuccess, sendError } from '../utils/response';
+import { CompilerService } from '../services/compiler/compiler.service';
+import { CODE_VERDICTS } from '../constants';
 
 export class PracticeController {
   /**
@@ -122,6 +124,50 @@ export class PracticeController {
     // Format safe questions for practice (hide answers)
     const safeQuestions: any[] = [];
     for (const q of selected) {
+      let programmingDetails: any = undefined;
+
+      if (q.type === 'programming') {
+        const prog = await ProgrammingQuestion.findOne({
+          $or: [
+            { questionId: q._id },
+            { _id: q._id },
+            ...(q.programmingQuestionId ? [{ _id: q.programmingQuestionId }] : []),
+          ],
+        });
+
+        const sampleCases = await ProgrammingTestCase.find({
+          questionId: q._id,
+          isSample: true,
+          isEnabled: true,
+        }).sort({ order: 1 });
+
+        programmingDetails = {
+          title: prog?.title || q.title || q.text,
+          problemStatement: prog?.problemStatement || q.text,
+          problemDescriptionMarkdown: prog?.problemDescriptionMarkdown || '',
+          inputFormat: prog?.inputFormat || '',
+          outputFormat: prog?.outputFormat || '',
+          constraints: prog?.constraints || '',
+          supportedLanguages: prog?.supportedLanguages || ['python', 'java', 'cpp', 'c'],
+          starterCode: prog?.starterCode || {
+            python: 'import sys\n\ndef main():\n    # Read input from standard input\n    # lines = sys.stdin.read().split()\n    pass\n\nif __name__ == "__main__":\n    main()\n',
+            java: 'import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        \n    }\n}\n',
+            cpp: '#include <iostream>\nusing namespace std;\n\nint main() {\n    \n    return 0;\n}\n',
+            c: '#include <stdio.h>\n\nint main() {\n    \n    return 0;\n}\n',
+          },
+          sampleInput: prog?.sampleInput || (sampleCases.length > 0 ? sampleCases[0].input : ''),
+          sampleExpectedOutput: prog?.sampleExpectedOutput || (sampleCases.length > 0 ? sampleCases[0].expectedOutput : ''),
+          sampleExplanation: prog?.sampleExplanation || '',
+          sampleTestCases: sampleCases.map((s) => ({
+            input: s.input,
+            expectedOutput: s.expectedOutput,
+            description: s.description || 'Sample Test Case',
+          })),
+          timeLimitSeconds: prog?.timeLimitSeconds || 2,
+          memoryLimitMb: prog?.memoryLimitMb || 256,
+        };
+      }
+
       safeQuestions.push({
         questionId: String(q._id),
         id: String(q._id),
@@ -133,6 +179,7 @@ export class PracticeController {
         options: q.options || [],
         marks: q.defaultMarks || 1,
         defaultMarks: q.defaultMarks || 1,
+        programmingDetails,
       });
     }
 
@@ -140,6 +187,94 @@ export class PracticeController {
       quizId: `PRACTICE-${Date.now()}`,
       questions: safeQuestions,
       totalQuestions: safeQuestions.length,
+    });
+  }
+
+  /**
+   * Practice "Run Code" against sample inputs or user custom input
+   */
+  static async runCode(req: AuthRequest, res: Response): Promise<void> {
+    const { questionId, language = 'python', sourceCode = '', customInput } = req.body;
+
+    if (!sourceCode || !sourceCode.trim()) {
+      sendError(res, 'Source code cannot be empty.', 400);
+      return;
+    }
+
+    let progQ: any = await ProgrammingQuestion.findOne({
+      $or: [{ questionId }, { _id: questionId }],
+    });
+
+    if (!progQ) {
+      const baseQ = await Question.findById(questionId);
+      if (baseQ && baseQ.programmingQuestionId) {
+        progQ = await ProgrammingQuestion.findById(baseQ.programmingQuestionId);
+      }
+    }
+
+    let testRuns: { input: string; expectedOutput?: string; description?: string }[] = [];
+
+    if (customInput !== undefined && customInput !== null && customInput.trim() !== '') {
+      testRuns = [{ input: customInput, description: 'Custom Input' }];
+    } else {
+      const sampleCases = await ProgrammingTestCase.find({
+        questionId: progQ?.questionId || questionId,
+        isSample: true,
+        isEnabled: true,
+      }).sort({ order: 1 });
+
+      if (sampleCases.length > 0) {
+        testRuns = sampleCases.map((s) => ({
+          input: s.input,
+          expectedOutput: s.expectedOutput,
+          description: s.description || 'Sample Test Case',
+        }));
+      } else if (progQ?.sampleInput) {
+        testRuns = [
+          {
+            input: progQ.sampleInput,
+            expectedOutput: progQ.sampleExpectedOutput,
+            description: 'Sample Input',
+          },
+        ];
+      } else {
+        testRuns = [{ input: '', description: 'Default Run' }];
+      }
+    }
+
+    const results = [];
+    for (const tr of testRuns) {
+      const exec = await CompilerService.execute({
+        language: language as any,
+        sourceCode,
+        stdin: tr.input,
+        expectedOutput: tr.expectedOutput,
+        timeLimitSeconds: progQ?.timeLimitSeconds || 2,
+        memoryLimitMb: progQ?.memoryLimitMb || 256,
+      });
+
+      results.push({
+        description: tr.description,
+        input: tr.input,
+        expectedOutput: tr.expectedOutput,
+        actualOutput: exec.stdout,
+        stderr: exec.stderr,
+        compileOutput: exec.compileOutput,
+        exitCode: exec.exitCode,
+        timeMs: exec.timeMs,
+        memoryKb: exec.memoryKb,
+        verdict: exec.verdict,
+        passed: exec.verdict === CODE_VERDICTS.ACCEPTED,
+      });
+    }
+
+    sendSuccess(res, {
+      results,
+      summary: {
+        total: results.length,
+        passed: results.filter((r) => r.passed).length,
+        hasCompileError: results.some((r) => r.verdict === CODE_VERDICTS.COMPILATION_ERROR),
+      },
     });
   }
 
@@ -167,7 +302,26 @@ export class PracticeController {
       let isCorrect = false;
 
       if (q.type === 'programming') {
-        isCorrect = Boolean(item.answer && item.answer.trim().length > 15);
+        if (item.passed === true) {
+          isCorrect = true;
+        } else if (item.answer && item.answer.trim().length > 10) {
+          try {
+            const sampleCase = await ProgrammingTestCase.findOne({ questionId: q._id, isSample: true });
+            if (sampleCase) {
+              const exec = await CompilerService.execute({
+                language: item.language || 'python',
+                sourceCode: item.answer,
+                stdin: sampleCase.input,
+                expectedOutput: sampleCase.expectedOutput,
+              });
+              isCorrect = exec.verdict === CODE_VERDICTS.ACCEPTED;
+            } else {
+              isCorrect = true;
+            }
+          } catch {
+            isCorrect = true;
+          }
+        }
       } else {
         const correctAnswers = q.correctAnswers || [];
         const studentAns = item.answer;

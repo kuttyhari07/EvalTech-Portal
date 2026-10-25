@@ -20,7 +20,15 @@ import {
   BookOpen,
   GraduationCap,
   Play,
+  Terminal,
+  AlertTriangle,
+  Loader2,
+  Code2,
+  Copy,
+  Check,
 } from 'lucide-react';
+import { CodeEditor } from '../../components/programming/CodeEditor';
+import { ProgrammingLanguage } from '../../types';
 
 interface PracticeStats {
   xpPoints: number;
@@ -46,6 +54,26 @@ interface QuizQuestion {
   questionText: string;
   options?: Array<string | { id?: string; text?: string }>;
   marks: number;
+  programmingDetails?: {
+    title?: string;
+    problemStatement?: string;
+    problemDescriptionMarkdown?: string;
+    inputFormat?: string;
+    outputFormat?: string;
+    constraints?: string;
+    starterCode?: Record<string, string>;
+    supportedLanguages?: ProgrammingLanguage[];
+    sampleInput?: string;
+    sampleExpectedOutput?: string;
+    sampleExplanation?: string;
+    sampleTestCases?: Array<{
+      input: string;
+      expectedOutput: string;
+      description?: string;
+    }>;
+    timeLimitSeconds?: number;
+    memoryLimitMb?: number;
+  };
 }
 
 export const PracticeArena: React.FC = () => {
@@ -61,6 +89,14 @@ export const PracticeArena: React.FC = () => {
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [quizResult, setQuizResult] = useState<any>(null);
+
+  // Programming Question Execution States
+  const [selectedLanguage, setSelectedLanguage] = useState<Record<string, ProgrammingLanguage>>({});
+  const [codeDrafts, setCodeDrafts] = useState<Record<string, Record<string, string>>>({});
+  const [isRunningCode, setIsRunningCode] = useState<Record<string, boolean>>({});
+  const [runResults, setRunResults] = useState<Record<string, any>>({});
+  const [customInput, setCustomInput] = useState<Record<string, string>>({});
+  const [useCustomInput, setUseCustomInput] = useState<Record<string, boolean>>({});
 
   const fetchInitialData = async () => {
     setLoadingInitial(true);
@@ -88,10 +124,46 @@ export const PracticeArena: React.FC = () => {
     setQuizResult(null);
     setUserAnswers({});
     setCurrentIdx(0);
+    setRunResults({});
+    setUseCustomInput({});
 
     try {
       const res = await api.post('/practice/quiz', { topic, count: 5 });
-      setActiveQuiz(res.data?.data?.questions || []);
+      const questions: QuizQuestion[] = res.data?.data?.questions || [];
+      setActiveQuiz(questions);
+
+      // Initialize drafts and default answers for programming questions
+      const initialDrafts: Record<string, Record<string, string>> = {};
+      const initialAnswers: Record<string, string> = {};
+      const initialLangs: Record<string, ProgrammingLanguage> = {};
+
+      for (const q of questions) {
+        if (q.type === 'programming') {
+          const starterMap = q.programmingDetails?.starterCode || {};
+          const defaultLang: ProgrammingLanguage =
+            (q.programmingDetails?.supportedLanguages?.[0] as ProgrammingLanguage) || 'python';
+          initialLangs[q.questionId] = defaultLang;
+          initialDrafts[q.questionId] = {
+            python:
+              starterMap.python ||
+              'import sys\n\ndef main():\n    # Read from standard input\n    # line = sys.stdin.read().split()\n    pass\n\nif __name__ == "__main__":\n    main()\n',
+            java:
+              starterMap.java ||
+              'import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        \n    }\n}\n',
+            cpp:
+              starterMap.cpp ||
+              '#include <iostream>\nusing namespace std;\n\nint main() {\n    \n    return 0;\n}\n',
+            c:
+              starterMap.c ||
+              '#include <stdio.h>\n\nint main() {\n    \n    return 0;\n}\n',
+          };
+          initialAnswers[q.questionId] = initialDrafts[q.questionId][defaultLang];
+        }
+      }
+
+      setCodeDrafts(initialDrafts);
+      setSelectedLanguage(initialLangs);
+      setUserAnswers(initialAnswers);
     } catch (err: any) {
       alert(err.message || 'Failed to generate quiz. Try again.');
     } finally {
@@ -106,14 +178,71 @@ export const PracticeArena: React.FC = () => {
     }));
   };
 
+  const handleLanguageChange = (qId: string, lang: ProgrammingLanguage) => {
+    setSelectedLanguage((prev) => ({ ...prev, [qId]: lang }));
+    const currentCode = codeDrafts[qId]?.[lang] || '';
+    setUserAnswers((prev) => ({ ...prev, [qId]: currentCode }));
+  };
+
+  const handleCodeChange = (qId: string, lang: ProgrammingLanguage, code: string) => {
+    setCodeDrafts((prev) => ({
+      ...prev,
+      [qId]: {
+        ...(prev[qId] || {}),
+        [lang]: code,
+      },
+    }));
+    setUserAnswers((prev) => ({
+      ...prev,
+      [qId]: code,
+    }));
+  };
+
+  const handleRunCode = async (q: QuizQuestion) => {
+    const qId = q.questionId;
+    const lang = selectedLanguage[qId] || 'python';
+    const code = codeDrafts[qId]?.[lang] || userAnswers[qId] || '';
+    const customIn = useCustomInput[qId] ? customInput[qId] || '' : undefined;
+
+    if (!code.trim()) {
+      alert('Source code cannot be empty.');
+      return;
+    }
+
+    setIsRunningCode((prev) => ({ ...prev, [qId]: true }));
+    try {
+      const res = await api.post('/practice/run', {
+        questionId: qId,
+        language: lang,
+        sourceCode: code,
+        customInput: customIn,
+      });
+      setRunResults((prev) => ({ ...prev, [qId]: res.data?.data }));
+    } catch (err: any) {
+      alert(err.message || 'Run code failed');
+    } finally {
+      setIsRunningCode((prev) => ({ ...prev, [qId]: false }));
+    }
+  };
+
   const handleSubmitQuiz = async () => {
     if (!activeQuiz) return;
     setIsSubmitting(true);
     try {
-      const answersPayload = activeQuiz.map((q) => ({
-        questionId: q.questionId,
-        answer: userAnswers[q.questionId] || '',
-      }));
+      const answersPayload = activeQuiz.map((q) => {
+        const lang = selectedLanguage[q.questionId] || 'python';
+        const isProg = q.type === 'programming';
+        const result = runResults[q.questionId];
+        const passed = isProg
+          ? Boolean(result?.summary?.passed && result.summary.passed === result.summary.total)
+          : undefined;
+        return {
+          questionId: q.questionId,
+          answer: userAnswers[q.questionId] || '',
+          language: isProg ? lang : undefined,
+          passed,
+        };
+      });
 
       const res = await api.post('/practice/submit', {
         answers: answersPayload,
@@ -351,37 +480,328 @@ export const PracticeArena: React.FC = () => {
                 </div>
 
                 {/* Multiple Choice Options */}
-                {activeQuiz[currentIdx].options && activeQuiz[currentIdx].options!.length > 0 && (
-                  <div className="space-y-2.5">
-                    {activeQuiz[currentIdx].options!.map((opt, oIdx) => {
-                      const qId = activeQuiz[currentIdx].questionId;
-                      const optText = typeof opt === 'string' ? opt : opt?.text || opt?.id || String(opt);
-                      const optId = typeof opt === 'string' ? opt : opt?.id || opt?.text || String(opt);
-                      const isSelected = userAnswers[qId] === optId || userAnswers[qId] === optText;
+                {activeQuiz[currentIdx].type !== 'programming' &&
+                  activeQuiz[currentIdx].options &&
+                  activeQuiz[currentIdx].options!.length > 0 && (
+                    <div className="space-y-2.5">
+                      {activeQuiz[currentIdx].options!.map((opt, oIdx) => {
+                        const qId = activeQuiz[currentIdx].questionId;
+                        const optText = typeof opt === 'string' ? opt : opt?.text || opt?.id || String(opt);
+                        const optId = typeof opt === 'string' ? opt : opt?.id || opt?.text || String(opt);
+                        const isSelected = userAnswers[qId] === optId || userAnswers[qId] === optText;
 
-                      return (
-                        <div
-                          key={oIdx}
-                          onClick={() => handleSelectAnswer(qId, optId)}
-                          className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center gap-3 ${
-                            isSelected
-                              ? 'border-indigo-brand bg-indigo-50/70 text-indigo-950 font-bold shadow-xs'
-                              : 'border-pearl-200 hover:border-pearl-300 hover:bg-pearl-50 text-midnight-900'
-                          }`}
-                        >
+                        return (
                           <div
-                            className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs font-mono ${
+                            key={oIdx}
+                            onClick={() => handleSelectAnswer(qId, optId)}
+                            className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center gap-3 ${
                               isSelected
-                                ? 'border-indigo-brand bg-indigo-brand text-white'
-                                : 'border-pearl-300 text-midnight-600'
+                                ? 'border-indigo-brand bg-indigo-50/70 text-indigo-950 font-bold shadow-xs'
+                                : 'border-pearl-200 hover:border-pearl-300 hover:bg-pearl-50 text-midnight-900'
                             }`}
                           >
-                            {String.fromCharCode(65 + oIdx)}
+                            <div
+                              className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs font-mono ${
+                                isSelected
+                                  ? 'border-indigo-brand bg-indigo-brand text-white'
+                                  : 'border-pearl-300 text-midnight-600'
+                              }`}
+                            >
+                              {String.fromCharCode(65 + oIdx)}
+                            </div>
+                            <span className="text-xs">{optText}</span>
                           </div>
-                          <span className="text-xs">{optText}</span>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                {/* PROGRAMMING QUESTION WORKSPACE */}
+                {activeQuiz[currentIdx].type === 'programming' && (
+                  <div className="space-y-4">
+                    {/* Specifications: Input, Output, Constraints */}
+                    {(activeQuiz[currentIdx].programmingDetails?.inputFormat ||
+                      activeQuiz[currentIdx].programmingDetails?.outputFormat ||
+                      activeQuiz[currentIdx].programmingDetails?.constraints) && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3.5 rounded-xl bg-pearl-100/70 border border-pearl-200 text-xs">
+                        {activeQuiz[currentIdx].programmingDetails?.inputFormat && (
+                          <div className="space-y-1">
+                            <span className="font-bold text-midnight-800 uppercase text-[10px] tracking-wider block">
+                              Input Format
+                            </span>
+                            <p className="text-midnight-600 font-medium">
+                              {activeQuiz[currentIdx].programmingDetails.inputFormat}
+                            </p>
+                          </div>
+                        )}
+                        {activeQuiz[currentIdx].programmingDetails?.outputFormat && (
+                          <div className="space-y-1">
+                            <span className="font-bold text-midnight-800 uppercase text-[10px] tracking-wider block">
+                              Output Format
+                            </span>
+                            <p className="text-midnight-600 font-medium">
+                              {activeQuiz[currentIdx].programmingDetails.outputFormat}
+                            </p>
+                          </div>
+                        )}
+                        {activeQuiz[currentIdx].programmingDetails?.constraints && (
+                          <div className="space-y-1">
+                            <span className="font-bold text-midnight-800 uppercase text-[10px] tracking-wider block">
+                              Constraints
+                            </span>
+                            <p className="font-mono text-midnight-700 bg-white/80 px-2 py-0.5 rounded border border-pearl-200 inline-block">
+                              {activeQuiz[currentIdx].programmingDetails.constraints}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Sample Test Case Preview */}
+                    {(activeQuiz[currentIdx].programmingDetails?.sampleInput ||
+                      activeQuiz[currentIdx].programmingDetails?.sampleExpectedOutput) && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3.5 bg-midnight-950 rounded-xl border border-midnight-800 text-xs font-mono">
+                        <div>
+                          <div className="text-[10px] uppercase font-bold text-pearl-400 mb-1 flex items-center gap-1.5">
+                            <Terminal className="w-3.5 h-3.5 text-indigo-glow" /> Sample Input:
+                          </div>
+                          <pre className="p-2.5 bg-midnight-900 rounded-lg text-pearl-200 overflow-x-auto whitespace-pre-wrap select-all">
+                            {activeQuiz[currentIdx].programmingDetails?.sampleInput || '(No input)'}
+                          </pre>
                         </div>
-                      );
-                    })}
+                        <div>
+                          <div className="text-[10px] uppercase font-bold text-pearl-400 mb-1 flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Expected Output:
+                          </div>
+                          <pre className="p-2.5 bg-midnight-900 rounded-lg text-emerald-300 overflow-x-auto whitespace-pre-wrap select-all">
+                            {activeQuiz[currentIdx].programmingDetails?.sampleExpectedOutput || '(No output)'}
+                          </pre>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Interactive Monaco Code Editor */}
+                    <div className="h-[380px] rounded-xl overflow-hidden border border-midnight-800 shadow-xl">
+                      <CodeEditor
+                        language={selectedLanguage[activeQuiz[currentIdx].questionId] || 'python'}
+                        onLanguageChange={(newLang) =>
+                          handleLanguageChange(activeQuiz[currentIdx].questionId, newLang)
+                        }
+                        sourceCode={
+                          codeDrafts[activeQuiz[currentIdx].questionId]?.[
+                            selectedLanguage[activeQuiz[currentIdx].questionId] || 'python'
+                          ] ||
+                          userAnswers[activeQuiz[currentIdx].questionId] ||
+                          ''
+                        }
+                        onChange={(val) =>
+                          handleCodeChange(
+                            activeQuiz[currentIdx].questionId,
+                            selectedLanguage[activeQuiz[currentIdx].questionId] || 'python',
+                            val
+                          )
+                        }
+                        starterCodeMap={activeQuiz[currentIdx].programmingDetails?.starterCode || {}}
+                        supportedLanguages={
+                          activeQuiz[currentIdx].programmingDetails?.supportedLanguages || [
+                            'python',
+                            'java',
+                            'cpp',
+                            'c',
+                          ]
+                        }
+                      />
+                    </div>
+
+                    {/* Run Code Control Bar */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-midnight-950 rounded-xl border border-midnight-800 text-white">
+                      <div className="flex items-center gap-3">
+                        <Button
+                          type="button"
+                          variant="electric"
+                          size="sm"
+                          leftIcon={
+                            isRunningCode[activeQuiz[currentIdx].questionId] ? (
+                              <Loader2 className="w-4 h-4 animate-spin text-white" />
+                            ) : (
+                              <Play className="w-4 h-4 fill-white text-white" />
+                            )
+                          }
+                          disabled={isRunningCode[activeQuiz[currentIdx].questionId]}
+                          onClick={() => handleRunCode(activeQuiz[currentIdx])}
+                          className="font-bold shadow-lg"
+                        >
+                          {isRunningCode[activeQuiz[currentIdx].questionId] ? 'Executing...' : 'Run Code'}
+                        </Button>
+
+                        <label className="flex items-center gap-2 text-xs font-medium text-pearl-300 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(useCustomInput[activeQuiz[currentIdx].questionId])}
+                            onChange={(e) =>
+                              setUseCustomInput((prev) => ({
+                                ...prev,
+                                [activeQuiz[currentIdx].questionId]: e.target.checked,
+                              }))
+                            }
+                            className="rounded border-midnight-700 bg-midnight-900 text-indigo-brand focus:ring-indigo-brand w-4 h-4 cursor-pointer"
+                          />
+                          <span>Custom Input</span>
+                        </label>
+                      </div>
+
+                      {runResults[activeQuiz[currentIdx].questionId]?.summary && (
+                        <div className="flex items-center gap-2">
+                          {runResults[activeQuiz[currentIdx].questionId].summary.passed ===
+                          runResults[activeQuiz[currentIdx].questionId].summary.total ? (
+                            <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800/80 px-2.5 py-1 rounded-lg">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                              Passed (
+                              {runResults[activeQuiz[currentIdx].questionId].summary.passed}/
+                              {runResults[activeQuiz[currentIdx].questionId].summary.total})
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1.5 text-xs font-bold text-amber-400 bg-amber-950/80 border border-amber-800/80 px-2.5 py-1 rounded-lg">
+                              <AlertTriangle className="w-4 h-4 text-amber-400" />
+                              Failed (
+                              {runResults[activeQuiz[currentIdx].questionId].summary.passed}/
+                              {runResults[activeQuiz[currentIdx].questionId].summary.total})
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Custom Input Textarea */}
+                    {useCustomInput[activeQuiz[currentIdx].questionId] && (
+                      <div className="p-3 bg-midnight-950 rounded-xl border border-midnight-800 space-y-1.5 animate-fadeIn">
+                        <div className="text-[11px] font-mono text-pearl-400 uppercase font-bold flex items-center gap-1.5">
+                          <Terminal className="w-3.5 h-3.5 text-indigo-glow" /> Standard Input (stdin):
+                        </div>
+                        <textarea
+                          rows={3}
+                          value={customInput[activeQuiz[currentIdx].questionId] || ''}
+                          onChange={(e) =>
+                            setCustomInput((prev) => ({
+                              ...prev,
+                              [activeQuiz[currentIdx].questionId]: e.target.value,
+                            }))
+                          }
+                          placeholder="Enter your custom input data here..."
+                          className="w-full bg-midnight-900 border border-midnight-800 rounded-lg p-2.5 text-xs font-mono text-white placeholder-pearl-500 focus:outline-none focus:border-indigo-brand"
+                        />
+                      </div>
+                    )}
+
+                    {/* Test Results Output Panel */}
+                    {runResults[activeQuiz[currentIdx].questionId]?.results && (
+                      <div className="bg-midnight-950 border border-midnight-800 rounded-xl p-4 space-y-3 animate-fadeIn">
+                        <div className="flex items-center justify-between border-b border-midnight-800 pb-2">
+                          <span className="text-xs font-mono font-bold uppercase text-pearl-300 flex items-center gap-1.5">
+                            <Terminal className="w-3.5 h-3.5 text-indigo-glow" /> Execution Terminal
+                          </span>
+                          <span className="text-[11px] font-mono text-pearl-400">
+                            {runResults[activeQuiz[currentIdx].questionId].results.length} Test Case(s)
+                          </span>
+                        </div>
+
+                        <div className="space-y-3">
+                          {runResults[activeQuiz[currentIdx].questionId].results.map(
+                            (res: any, rIdx: number) => (
+                              <div
+                                key={rIdx}
+                                className={`p-3 rounded-lg border text-xs font-mono space-y-2 ${
+                                  res.passed
+                                    ? 'bg-emerald-950/20 border-emerald-800/40'
+                                    : 'bg-rose-950/20 border-rose-800/40'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    {res.passed ? (
+                                      <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                    ) : (
+                                      <XCircle className="w-4 h-4 text-rose-400" />
+                                    )}
+                                    <span className="font-bold text-white">
+                                      {res.description || `Test Case #${rIdx + 1}`}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span
+                                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                        res.passed
+                                          ? 'bg-emerald-500/20 text-emerald-300'
+                                          : 'bg-rose-500/20 text-rose-300'
+                                      }`}
+                                    >
+                                      {res.verdict}
+                                    </span>
+                                    <span className="text-[10px] text-pearl-400">{res.timeMs || 0}ms</span>
+                                  </div>
+                                </div>
+
+                                {res.compileOutput && (
+                                  <div className="space-y-1">
+                                    <span className="text-[10px] uppercase text-rose-300 block">
+                                      Compilation Error:
+                                    </span>
+                                    <pre className="p-2 bg-midnight-900 rounded text-rose-300 text-[11px] overflow-x-auto whitespace-pre-wrap">
+                                      {res.compileOutput}
+                                    </pre>
+                                  </div>
+                                )}
+
+                                {res.stderr && (
+                                  <div className="space-y-1">
+                                    <span className="text-[10px] uppercase text-rose-300 block">
+                                      Runtime Error / Stderr:
+                                    </span>
+                                    <pre className="p-2 bg-midnight-900 rounded text-rose-300 text-[11px] overflow-x-auto whitespace-pre-wrap">
+                                      {res.stderr}
+                                    </pre>
+                                  </div>
+                                )}
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] pt-1">
+                                  <div>
+                                    <span className="text-[10px] uppercase text-pearl-400 block mb-0.5">
+                                      Input:
+                                    </span>
+                                    <pre className="p-2 bg-midnight-900 rounded text-pearl-200 overflow-x-auto whitespace-pre-wrap">
+                                      {res.input || '(None)'}
+                                    </pre>
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] uppercase text-pearl-400 block mb-0.5">
+                                      Your Output:
+                                    </span>
+                                    <pre
+                                      className={`p-2 bg-midnight-900 rounded overflow-x-auto whitespace-pre-wrap ${
+                                        res.passed ? 'text-emerald-300' : 'text-rose-300'
+                                      }`}
+                                    >
+                                      {res.actualOutput || '(No output)'}
+                                    </pre>
+                                  </div>
+                                </div>
+
+                                {res.expectedOutput && (
+                                  <div>
+                                    <span className="text-[10px] uppercase text-pearl-400 block mb-0.5">
+                                      Expected Output:
+                                    </span>
+                                    <pre className="p-2 bg-midnight-900 rounded text-emerald-300 overflow-x-auto whitespace-pre-wrap">
+                                      {res.expectedOutput}
+                                    </pre>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -503,17 +923,29 @@ export const PracticeArena: React.FC = () => {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] pt-1">
-                      <div className="p-2 rounded bg-white border border-pearl-200">
-                        <span className="font-bold text-midnight-700 block">Your Answer:</span>
-                        <span className="font-mono text-midnight-900 font-semibold">
-                          {r.userAnswer || 'No response'}
-                        </span>
+                      <div className="p-2.5 rounded bg-white border border-pearl-200">
+                        <span className="font-bold text-midnight-700 block mb-1">Your Answer / Solution:</span>
+                        {String(r.userAnswer || '').includes('\n') ? (
+                          <pre className="font-mono text-[10px] text-midnight-950 bg-pearl-50 p-2 rounded border border-pearl-200 overflow-x-auto whitespace-pre-wrap max-h-44">
+                            {r.userAnswer}
+                          </pre>
+                        ) : (
+                          <span className="font-mono text-midnight-900 font-semibold">
+                            {r.userAnswer || 'No response'}
+                          </span>
+                        )}
                       </div>
-                      <div className="p-2 rounded bg-white border border-emerald-200">
-                        <span className="font-bold text-emerald-800 block">Correct Answer:</span>
-                        <span className="font-mono text-emerald-950 font-semibold">
-                          {r.correctAnswer}
-                        </span>
+                      <div className="p-2.5 rounded bg-white border border-emerald-200">
+                        <span className="font-bold text-emerald-800 block mb-1">Evaluation / Correct Output:</span>
+                        {String(r.correctAnswer || '').includes('\n') ? (
+                          <pre className="font-mono text-[10px] text-emerald-950 bg-emerald-50/50 p-2 rounded border border-emerald-200 overflow-x-auto whitespace-pre-wrap max-h-44">
+                            {r.correctAnswer}
+                          </pre>
+                        ) : (
+                          <span className="font-mono text-emerald-950 font-semibold">
+                            {r.correctAnswer}
+                          </span>
+                        )}
                       </div>
                     </div>
 
