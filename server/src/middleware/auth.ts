@@ -57,6 +57,33 @@ export async function authenticate(
   }
 }
 
+export async function optionalAuthenticate(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    let token = req.cookies?.token;
+    if (!token && req.headers.authorization?.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+    if (token) {
+      const decoded = verifyToken(token);
+      let dbUser: any = null;
+      if (decoded.role === ROLES.STUDENT) {
+        dbUser = await Student.findById(decoded.userId);
+      } else {
+        dbUser = await User.findById(decoded.userId);
+      }
+      req.user = {
+        ...decoded,
+        dbUser,
+      };
+    }
+  } catch {}
+  next();
+}
+
 export function requireRoles(...allowedRoles: UserRole[]) {
   return (req: AuthRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {

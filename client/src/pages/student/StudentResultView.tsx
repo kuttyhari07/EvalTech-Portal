@@ -78,6 +78,19 @@ export const StudentResultView: React.FC = () => {
   };
 
   const handleRequestAiReview = async (questionIndex: number, q: any) => {
+    const rawCode = (typeof q.studentAnswer === 'string' ? q.studentAnswer : '')?.trim();
+
+    if (!rawCode || rawCode === '// No code submitted') {
+      setAiReviews((prev) => ({
+        ...prev,
+        [questionIndex]: {
+          loading: false,
+          error: 'No source code was submitted for this question to review. Submitting a solution is required for AI feedback.',
+        },
+      }));
+      return;
+    }
+
     setAiReviews((prev) => ({
       ...prev,
       [questionIndex]: { loading: true },
@@ -85,9 +98,11 @@ export const StudentResultView: React.FC = () => {
 
     try {
       const res = await api.post('/ai/review-code', {
-        code: q.studentAnswer || '',
+        sourceCode: rawCode,
+        code: rawCode,
         language: q.programmingLanguage || 'python',
         problemStatement: q.questionText || '',
+        problemTitle: `Q${questionIndex + 1}: ${q.questionText || 'Coding Problem'}`,
       });
 
       setAiReviews((prev) => ({
