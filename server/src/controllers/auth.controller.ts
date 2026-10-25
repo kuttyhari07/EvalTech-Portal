@@ -260,7 +260,7 @@ export class AuthController {
 
   static async getCurrentUser(req: AuthRequest, res: Response): Promise<void> {
     if (!req.user) {
-      sendError(res, 'Unauthenticated', 401);
+      sendSuccess(res, { user: null, organization: null });
       return;
     }
 
