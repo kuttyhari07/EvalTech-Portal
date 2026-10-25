@@ -30,6 +30,14 @@ export async function verifySafeExamBrowser(
       return next();
     }
 
+    // In development mode, allow explicit dev bypass for local testing
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      (req.headers['x-seb-dev-bypass'] === 'true' || req.body?.bypassSEB === true)
+    ) {
+      return next();
+    }
+
     const userAgent = req.headers['user-agent'] || '';
     const sebRequestHash = req.headers['x-safeexambrowser-requesthash'];
     const sebConfigKeyHash = req.headers['x-safeexambrowser-configkeyhash'];

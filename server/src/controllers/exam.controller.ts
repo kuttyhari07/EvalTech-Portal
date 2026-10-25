@@ -8,6 +8,7 @@ import { EXAM_STATUS, ROLES } from '../constants';
 import { EmailService } from '../services/email.service';
 import { recordAuditLog } from '../utils/audit';
 import { EvaluationService } from '../services/evaluation.service';
+import { SebService } from '../services/seb.service';
 
 function generateExamCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -456,4 +457,52 @@ export class ExamController {
 
     sendSuccess(res, null, 'Attempt successfully terminated and submitted for evaluation.');
   }
+
+  /**
+   * Generates and downloads the Safe Exam Browser (.seb) configuration file
+   */
+  static async downloadSebConfig(req: Request, res: Response): Promise<void> {
+    const { id, code } = req.params;
+
+    let exam: any = null;
+    if (code) {
+      exam = await Exam.findOne({ examCode: String(code).toUpperCase().trim() });
+    } else if (id) {
+      exam = await Exam.findById(id);
+    }
+
+    if (!exam) {
+      sendError(res, 'Exam not found', 404);
+      return;
+    }
+
+    const origin = req.get('origin') || req.get('referer');
+    let clientBaseUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    if (origin) {
+      try {
+        const parsed = new URL(origin);
+        clientBaseUrl = `${parsed.protocol}//${parsed.host}`;
+      } catch {}
+    }
+
+    const startUrl = `${clientBaseUrl}/exam/${exam.examCode}`;
+    const quitUrl = `${clientBaseUrl}/exam/${exam.examCode}/submitted`;
+
+    const sebXml = SebService.generateSebXml({
+      examCode: exam.examCode,
+      examTitle: exam.title,
+      startUrl,
+      quitUrl,
+      exitPassword: exam.exitPassword,
+      browserExamKey: exam.sebBrowserExamKey,
+    });
+
+    res.setHeader('Content-Type', 'application/seb');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="EvalTech-${exam.examCode}-SEB.seb"`
+    );
+    res.send(sebXml);
+  }
 }
+

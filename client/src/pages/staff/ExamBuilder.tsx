@@ -27,6 +27,7 @@ import {
   Code2,
   Search,
   Check,
+  Download,
 } from 'lucide-react';
 
 export const StaffExamBuilder: React.FC = () => {
@@ -591,12 +592,36 @@ export const StaffExamBuilder: React.FC = () => {
                   />
                 </label>
                 {requireSEB && (
-                  <Input
-                    label="SEB Browser Exam Key (Optional)"
-                    placeholder="Enter 64-char key hash"
-                    value={sebBrowserExamKey}
-                    onChange={(e) => setSebBrowserExamKey(e.target.value)}
-                  />
+                  <div className="space-y-2 pt-1">
+                    <p className="text-[11px] text-midnight-600 leading-relaxed bg-pearl-50 p-2.5 rounded-lg border border-pearl-200">
+                      Locks down candidate device during the examination: blocks Alt+Tab, Windows Key, second monitors, screen capture, and third-party apps.
+                    </p>
+                    <Input
+                      label="SEB Browser Exam Key (Optional)"
+                      placeholder="Enter 64-char key hash"
+                      value={sebBrowserExamKey}
+                      onChange={(e) => setSebBrowserExamKey(e.target.value)}
+                    />
+                    {isEditing && id && (
+                      <div className="pt-1">
+                        <a
+                          href={`/api/exams/${id}/seb-config`}
+                          download={`EvalTech-${id}-SEB.seb`}
+                          className="inline-block"
+                        >
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="text-xs text-indigo-brand border-indigo-200 bg-indigo-50/70 hover:bg-indigo-50"
+                            leftIcon={<Download className="w-3.5 h-3.5 text-indigo-brand" />}
+                          >
+                            Download SEB Configuration (.seb)
+                          </Button>
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 

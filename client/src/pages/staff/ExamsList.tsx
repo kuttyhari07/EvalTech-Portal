@@ -20,6 +20,8 @@ import {
   Edit3,
   Trash2,
   Radio,
+  Shield,
+  Download,
 } from 'lucide-react';
 import { LiveExamMonitorModal } from '../../components/proctor/LiveExamMonitorModal';
 
@@ -203,6 +205,29 @@ export const StaffExamsList: React.FC = () => {
                       {copiedCode === exam.examCode ? 'Copied' : 'Copy Code'}
                     </Button>
                   </div>
+
+                  {/* SEB Configuration Badge / Download if enforced */}
+                  {exam.requireSEB && (
+                    <div className="p-2.5 rounded-xl bg-indigo-50/70 border border-indigo-200/80 flex items-center justify-between text-xs">
+                      <span className="font-semibold text-indigo-950 flex items-center gap-1.5">
+                        <Shield className="w-3.5 h-3.5 text-indigo-brand shrink-0" />
+                        <span>Safe Exam Browser</span>
+                      </span>
+                      <a
+                        href={`/api/exams/code/${exam.examCode}/seb-config`}
+                        download={`EvalTech-${exam.examCode}-SEB.seb`}
+                      >
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-[11px] h-7 px-2.5 bg-white border-indigo-300 text-indigo-brand hover:bg-indigo-50"
+                          leftIcon={<Download className="w-3 h-3" />}
+                        >
+                          .seb Config
+                        </Button>
+                      </a>
+                    </div>
+                  )}
 
                   {/* Scheduled Window */}
                   <div className="flex items-center justify-between text-[11px] text-midnight-600">

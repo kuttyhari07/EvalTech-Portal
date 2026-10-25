@@ -19,6 +19,9 @@ import {
   Mail,
   Hash,
   Lock,
+  Download,
+  ExternalLink,
+  ShieldCheck,
 } from 'lucide-react';
 
 export const StudentExamWelcome: React.FC = () => {
@@ -37,6 +40,13 @@ export const StudentExamWelcome: React.FC = () => {
   const [rollNo, setRollNo] = useState('');
   const [startPassword, setStartPassword] = useState('');
   const [starting, setStarting] = useState(false);
+  const [devBypassSEB, setDevBypassSEB] = useState(false);
+
+  // Check if student opened inside Safe Exam Browser
+  const isSEBBrowser =
+    typeof navigator !== 'undefined' &&
+    (navigator.userAgent.includes('SEB') ||
+      navigator.userAgent.includes('SafeExamBrowser'));
 
   // Pre-fill student info if logged in
   useEffect(() => {
@@ -82,6 +92,7 @@ export const StudentExamWelcome: React.FC = () => {
         email,
         rollNo,
         startPassword: exam.requireStartPassword ? startPassword : undefined,
+        bypassSEB: devBypassSEB,
       });
 
       // Store active session token and attempt ID in sessionStorage
@@ -194,6 +205,121 @@ export const StudentExamWelcome: React.FC = () => {
                   </Badge>
                 )}
               </div>
+
+              {/* Safe Exam Browser Lockdown Verification Banner or Hub */}
+              {exam.requireSEB && (
+                isSEBBrowser ? (
+                  <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-950 flex items-start gap-3 shadow-xs">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shrink-0 shadow-xs">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-emerald-900 uppercase tracking-wide">
+                        Safe Exam Browser Active & Verified
+                      </h4>
+                      <p className="text-xs text-emerald-700 mt-0.5">
+                        Your browser session is locked down. Background applications, screenshots, and unauthorized keyboard shortcuts are restricted.
+                      </p>
+                    </div>
+                  </div>
+                ) : devBypassSEB ? (
+                  <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-950 flex items-start justify-between gap-3 text-xs">
+                    <div className="flex items-start gap-2.5">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold text-amber-900 block">SEB Bypass Active (Testing Mode)</span>
+                        <p className="text-amber-700 text-[11px] mt-0.5">
+                          You are taking this exam in a regular browser for demonstration and testing.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDevBypassSEB(false)}
+                      className="text-[11px] font-bold text-amber-800 underline hover:text-amber-950 shrink-0"
+                    >
+                      Enforce SEB
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-5 rounded-2xl bg-midnight-950 text-white border border-indigo-500/40 shadow-xl space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 shrink-0 shadow-inner">
+                        <Shield className="w-6 h-6 text-indigo-glow" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-indigo-glow block">
+                          Security Lockdown Required
+                        </span>
+                        <h3 className="text-base font-extrabold text-white">Safe Exam Browser (SEB) Enforced</h3>
+                        <p className="text-xs text-pearl-300 mt-1 leading-relaxed">
+                          Your instructor has restricted this assessment to Safe Exam Browser to ensure exam integrity. To attend this exam, open it directly using the official SEB client.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Launch & Download Buttons */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                      {/* 1-Click Launch Button */}
+                      <a
+                        href={`seb://${window.location.host}/api/exams/code/${exam.examCode}/seb-config`}
+                        className="w-full"
+                      >
+                        <Button
+                          type="button"
+                          variant="electric"
+                          size="md"
+                          className="w-full justify-center text-xs font-bold shadow-md"
+                          leftIcon={<Shield className="w-4 h-4 fill-white" />}
+                        >
+                          Launch in Safe Exam Browser
+                        </Button>
+                      </a>
+
+                      {/* Download .seb file button */}
+                      <a
+                        href={`/api/exams/code/${exam.examCode}/seb-config`}
+                        download={`EvalTech-${exam.examCode}-SEB.seb`}
+                        className="w-full"
+                      >
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="md"
+                          className="w-full justify-center text-xs bg-midnight-900 border-midnight-700 text-pearl-200 hover:text-white"
+                          leftIcon={<Download className="w-4 h-4" />}
+                        >
+                          Download .seb Config
+                        </Button>
+                      </a>
+                    </div>
+
+                    {/* Support & Download SEB Client */}
+                    <div className="pt-2 border-t border-midnight-800 flex flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] text-pearl-400 gap-2">
+                      <span>Don't have Safe Exam Browser installed on your device?</span>
+                      <a
+                        href="https://safeexambrowser.org/download_en.html"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-indigo-glow hover:underline flex items-center gap-1 font-bold shrink-0"
+                      >
+                        Download SEB Client <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+
+                    {/* Local Dev Testing Bypass */}
+                    <div className="pt-1 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setDevBypassSEB(true)}
+                        className="text-[11px] text-pearl-400 hover:text-indigo-glow underline transition-colors"
+                      >
+                        Testing in local development? Click here to test in standard browser
+                      </button>
+                    </div>
+                  </div>
+                )
+              )}
 
               {/* Student identification form */}
               <form onSubmit={handleStartExam} className="space-y-4">
