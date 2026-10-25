@@ -266,21 +266,35 @@ export class ResultController {
   }
 
   static async getStudentAnalytics(req: AuthRequest, res: Response): Promise<void> {
-    const userId = req.user!.userId;
-    const targetEmail = (req.query.email as string) || req.user?.email;
+    const userId = req.user?.userId;
+    const targetEmail = ((req.query.email as string) || req.user?.email || '').trim().toLowerCase();
 
     // Find all results for this student
-    const filter: any = {
-      $or: [
-        { studentId: userId },
-        { 'studentInfo.email': targetEmail?.toLowerCase() },
-      ],
-    };
+    const filterOr: any[] = [];
+    if (userId) filterOr.push({ studentId: userId });
+    if (targetEmail) filterOr.push({ 'studentInfo.email': targetEmail });
 
-    const results = await ExamResult.find(filter).populate('examId');
+    if (filterOr.length === 0) {
+      sendSuccess(res, {
+        overallStats: { totalExams: 0, totalQuestions: 0, correctQuestions: 0, overallAccuracy: 0 },
+        masteryCategories: { strong: [], moderate: [], weak: [] },
+        topicBreakdown: [],
+        studyCoachRecommendations: 'Complete your first examination to see tailored study coach recommendations.',
+        totalExamsTaken: 0,
+        averagePercentage: 0,
+        topics: [],
+        coachingFeedback: { strengths: [], criticalGaps: [], recommendation: 'Complete your first examination to unlock analytics.' },
+      });
+      return;
+    }
+
+    const results = await ExamResult.find({ $or: filterOr }).populate('examId');
 
     // Aggregate topic performance
-    const topicStatsMap = new Map<string, { subject: string; correct: number; total: number; marksEarned: number; marksMax: number }>();
+    const topicStatsMap = new Map<
+      string,
+      { subject: string; correct: number; total: number; marksEarned: number; marksMax: number }
+    >();
 
     for (const r of results) {
       const examSubject = (r.examId as any)?.subject || 'General';
@@ -315,6 +329,7 @@ export class ResultController {
         totalQuestions: data.total,
         correctQuestions: data.correct,
         accuracyPercent: accuracy,
+        accuracy,
         masteryLevel,
       };
     });
@@ -323,18 +338,49 @@ export class ResultController {
     topics.sort((a, b) => a.accuracyPercent - b.accuracyPercent);
 
     const weakTopics = topics.filter((t) => t.masteryLevel === 'weak');
+    const moderateTopics = topics.filter((t) => t.masteryLevel === 'moderate');
     const strongTopics = topics.filter((t) => t.masteryLevel === 'strong');
+
+    const totalQuestions = topics.reduce((acc, t) => acc + t.totalQuestions, 0);
+    const correctQuestions = topics.reduce((acc, t) => acc + t.correctQuestions, 0);
+    const overallAccuracy =
+      totalQuestions > 0 ? Math.round((correctQuestions / totalQuestions) * 100) : 0;
+
+    const coachingRecommendation =
+      weakTopics.length > 0
+        ? `Focus your upcoming study sessions on ${weakTopics
+            .slice(0, 3)
+            .map((t) => t.topic)
+            .join(', ')}. Practice more coding problems and review fundamental concepts.`
+        : 'Outstanding consistency across all examined topics! Continue daily mock practice to maintain peak retention.';
 
     const coachingFeedback = {
       strengths: strongTopics.map((t) => t.topic),
       criticalGaps: weakTopics.map((t) => t.topic),
-      recommendation:
-        weakTopics.length > 0
-          ? `Focus your upcoming study sessions on ${weakTopics.slice(0, 3).map((t) => t.topic).join(', ')}. Practice more coding problems and review fundamental concepts.`
-          : 'Outstanding consistency across all examined topics! Continue daily mock practice to maintain peak retention.',
+      recommendation: coachingRecommendation,
     };
 
     sendSuccess(res, {
+      overallStats: {
+        totalExams: results.length,
+        totalQuestions,
+        correctQuestions,
+        overallAccuracy,
+      },
+      masteryCategories: {
+        strong: strongTopics.map((t) => t.topic),
+        moderate: moderateTopics.map((t) => t.topic),
+        weak: weakTopics.map((t) => t.topic),
+      },
+      topicBreakdown: topics.map((t) => ({
+        topic: t.topic,
+        subject: t.subject,
+        totalQuestions: t.totalQuestions,
+        correctQuestions: t.correctQuestions,
+        accuracy: t.accuracyPercent,
+        masteryLevel: t.masteryLevel,
+      })),
+      studyCoachRecommendations: coachingRecommendation,
       totalExamsTaken: results.length,
       averagePercentage:
         results.length > 0

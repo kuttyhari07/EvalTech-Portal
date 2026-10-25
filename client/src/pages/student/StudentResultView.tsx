@@ -293,93 +293,135 @@ export const StudentResultView: React.FC = () => {
                     </div>
                   )}
 
-                  {showAnalytics && analyticsData && (
-                    <div className="mt-4 p-5 rounded-2xl bg-white border border-indigo-100 shadow-md space-y-5 animate-fadeIn">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-pearl-100">
-                        <div>
-                          <h4 className="text-sm font-extrabold text-midnight-950 flex items-center gap-2">
-                            <TrendingUp className="w-4 h-4 text-indigo-brand" />
-                            Comprehensive Skill Gap & Topic Mastery Breakdown
-                          </h4>
-                          <p className="text-xs text-midnight-500">
-                            Evaluated across {analyticsData.overallStats.totalQuestions} questions with {analyticsData.overallStats.overallAccuracy}% aggregate accuracy
-                          </p>
-                        </div>
-                        <Badge variant="purple">
-                          Grade: {analyticsData.overallStats.overallAccuracy >= 75 ? 'Mastery Tier' : analyticsData.overallStats.overallAccuracy >= 50 ? 'Intermediate' : 'Foundational'}
-                        </Badge>
-                      </div>
+                  {showAnalytics && analyticsData && (() => {
+                    const overallStats = analyticsData?.overallStats || {
+                      totalQuestions:
+                        analyticsData?.topics?.reduce((acc: number, t: any) => acc + (t.totalQuestions || 0), 0) || 0,
+                      overallAccuracy: analyticsData?.averagePercentage || 0,
+                    };
+                    const strongList =
+                      analyticsData?.masteryCategories?.strong ??
+                      analyticsData?.topics
+                        ?.filter((t: any) => (t.accuracyPercent ?? t.accuracy ?? 0) >= 75)
+                        ?.map((t: any) => t.topic) ??
+                      [];
+                    const moderateList =
+                      analyticsData?.masteryCategories?.moderate ??
+                      analyticsData?.topics
+                        ?.filter(
+                          (t: any) =>
+                            (t.accuracyPercent ?? t.accuracy ?? 0) >= 50 &&
+                            (t.accuracyPercent ?? t.accuracy ?? 0) < 75
+                        )
+                        ?.map((t: any) => t.topic) ??
+                      [];
+                    const weakList =
+                      analyticsData?.masteryCategories?.weak ??
+                      analyticsData?.topics
+                        ?.filter((t: any) => (t.accuracyPercent ?? t.accuracy ?? 0) < 50)
+                        ?.map((t: any) => t.topic) ??
+                      [];
 
-                      {/* Mastery Category Counts */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200">
-                          <span className="text-[10px] font-bold uppercase text-emerald-800 block">Strong Topics (≥75%)</span>
-                          <span className="text-xl font-extrabold text-emerald-950">{analyticsData.masteryCategories.strong.length}</span>
-                          <span className="text-[11px] text-emerald-700 block truncate mt-0.5">
-                            {analyticsData.masteryCategories.strong.join(', ') || 'Keep practicing!'}
-                          </span>
-                        </div>
+                    const topicBreakdown =
+                      analyticsData?.topicBreakdown || analyticsData?.topics || [];
+                    const coachRecommendation =
+                      analyticsData?.studyCoachRecommendations ||
+                      analyticsData?.coachingFeedback?.recommendation ||
+                      '';
 
-                        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200">
-                          <span className="text-[10px] font-bold uppercase text-amber-800 block">Moderate Topics (50-74%)</span>
-                          <span className="text-xl font-extrabold text-amber-950">{analyticsData.masteryCategories.moderate.length}</span>
-                          <span className="text-[11px] text-amber-700 block truncate mt-0.5">
-                            {analyticsData.masteryCategories.moderate.join(', ') || 'None in this tier'}
-                          </span>
-                        </div>
-
-                        <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200">
-                          <span className="text-[10px] font-bold uppercase text-rose-800 block">Needs Focus (&lt;50%)</span>
-                          <span className="text-xl font-extrabold text-rose-950">{analyticsData.masteryCategories.weak.length}</span>
-                          <span className="text-[11px] text-rose-700 block truncate mt-0.5">
-                            {analyticsData.masteryCategories.weak.join(', ') || 'No weak areas identified! 🌟'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Topic-wise Progress Bars */}
-                      <div className="space-y-3">
-                        <h5 className="text-xs font-bold text-midnight-900 uppercase tracking-wider">Topic Accuracy Bars</h5>
-                        <div className="space-y-2">
-                          {analyticsData.topicBreakdown.map((t: any, idx: number) => (
-                            <div key={idx} className="p-3 rounded-xl bg-pearl-50 border border-pearl-200 space-y-1.5">
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="font-bold text-midnight-900">{t.topic}</span>
-                                <span className="font-mono font-bold text-indigo-brand">
-                                  {t.correctQuestions}/{t.totalQuestions} ({t.accuracy}%)
-                                </span>
-                              </div>
-                              <div className="w-full bg-pearl-200 rounded-full h-2 overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full transition-all ${
-                                    t.accuracy >= 75
-                                      ? 'bg-emerald-500'
-                                      : t.accuracy >= 50
-                                      ? 'bg-amber-500'
-                                      : 'bg-rose-500'
-                                  }`}
-                                  style={{ width: `${t.accuracy}%` }}
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* AI Study Coach Recommendation */}
-                      {analyticsData.studyCoachRecommendations && (
-                        <div className="p-4 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 space-y-2">
-                          <div className="flex items-center gap-2 text-indigo-900 font-bold text-xs">
-                            <Sparkles className="w-4 h-4 text-indigo-600" />
-                            <span>AI Study Coach Recommendation</span>
+                    return (
+                      <div className="mt-4 p-5 rounded-2xl bg-white border border-indigo-100 shadow-md space-y-5 animate-fadeIn">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-pearl-100">
+                          <div>
+                            <h4 className="text-sm font-extrabold text-midnight-950 flex items-center gap-2">
+                              <TrendingUp className="w-4 h-4 text-indigo-brand" />
+                              Comprehensive Skill Gap & Topic Mastery Breakdown
+                            </h4>
+                            <p className="text-xs text-midnight-500">
+                              Evaluated across {overallStats.totalQuestions} questions with {overallStats.overallAccuracy}% aggregate accuracy
+                            </p>
                           </div>
-                          <p className="text-xs text-indigo-950 leading-relaxed font-medium">
-                            {analyticsData.studyCoachRecommendations}
-                          </p>
+                          <Badge variant="purple">
+                            Grade: {overallStats.overallAccuracy >= 75 ? 'Mastery Tier' : overallStats.overallAccuracy >= 50 ? 'Intermediate' : 'Foundational'}
+                          </Badge>
                         </div>
-                      )}
-                    </div>
-                  )}
+
+                        {/* Mastery Category Counts */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200">
+                            <span className="text-[10px] font-bold uppercase text-emerald-800 block">Strong Topics (≥75%)</span>
+                            <span className="text-xl font-extrabold text-emerald-950">{strongList.length}</span>
+                            <span className="text-[11px] text-emerald-700 block truncate mt-0.5">
+                              {strongList.join(', ') || 'Keep practicing!'}
+                            </span>
+                          </div>
+
+                          <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200">
+                            <span className="text-[10px] font-bold uppercase text-amber-800 block">Moderate Topics (50-74%)</span>
+                            <span className="text-xl font-extrabold text-amber-950">{moderateList.length}</span>
+                            <span className="text-[11px] text-amber-700 block truncate mt-0.5">
+                              {moderateList.join(', ') || 'None in this tier'}
+                            </span>
+                          </div>
+
+                          <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200">
+                            <span className="text-[10px] font-bold uppercase text-rose-800 block">Needs Focus (&lt;50%)</span>
+                            <span className="text-xl font-extrabold text-rose-950">{weakList.length}</span>
+                            <span className="text-[11px] text-rose-700 block truncate mt-0.5">
+                              {weakList.join(', ') || 'No weak areas identified! 🌟'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Topic-wise Progress Bars */}
+                        {topicBreakdown.length > 0 && (
+                          <div className="space-y-3">
+                            <h5 className="text-xs font-bold text-midnight-900 uppercase tracking-wider">Topic Accuracy Bars</h5>
+                            <div className="space-y-2">
+                              {topicBreakdown.map((t: any, idx: number) => {
+                                const acc = t.accuracy ?? t.accuracyPercent ?? 0;
+                                return (
+                                  <div key={idx} className="p-3 rounded-xl bg-pearl-50 border border-pearl-200 space-y-1.5">
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="font-bold text-midnight-900">{t.topic}</span>
+                                      <span className="font-mono font-bold text-indigo-brand">
+                                        {t.correctQuestions ?? t.correct ?? 0}/{t.totalQuestions ?? t.total ?? 0} ({acc}%)
+                                      </span>
+                                    </div>
+                                    <div className="w-full bg-pearl-200 rounded-full h-2 overflow-hidden">
+                                      <div
+                                        className={`h-full rounded-full transition-all ${
+                                          acc >= 75
+                                            ? 'bg-emerald-500'
+                                            : acc >= 50
+                                            ? 'bg-amber-500'
+                                            : 'bg-rose-500'
+                                        }`}
+                                        style={{ width: `${acc}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* AI Study Coach Recommendation */}
+                        {coachRecommendation && (
+                          <div className="p-4 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 space-y-2">
+                            <div className="flex items-center gap-2 text-indigo-900 font-bold text-xs">
+                              <Sparkles className="w-4 h-4 text-indigo-600" />
+                              <span>AI Study Coach Recommendation</span>
+                            </div>
+                            <p className="text-xs text-indigo-950 leading-relaxed font-medium">
+                              {coachRecommendation}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Question-wise Breakdown with Explanations */}
