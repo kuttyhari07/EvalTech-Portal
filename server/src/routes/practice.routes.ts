@@ -8,7 +8,9 @@ router.use(authenticate);
 
 router.get('/stats', PracticeController.getPracticeStats);
 router.get('/topics', PracticeController.getPracticeTopics);
+router.post('/quiz', PracticeController.generateQuiz);
 router.post('/generate-quiz', PracticeController.generateQuiz);
+router.post('/submit', PracticeController.submitQuiz);
 router.post('/submit-quiz', PracticeController.submitQuiz);
 
 export default router;

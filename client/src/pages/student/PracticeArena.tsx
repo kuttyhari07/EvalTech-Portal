@@ -44,7 +44,7 @@ interface QuizQuestion {
   topic: string;
   type: string;
   questionText: string;
-  options?: string[];
+  options?: Array<string | { id?: string; text?: string }>;
   marks: number;
 }
 
@@ -355,12 +355,14 @@ export const PracticeArena: React.FC = () => {
                   <div className="space-y-2.5">
                     {activeQuiz[currentIdx].options!.map((opt, oIdx) => {
                       const qId = activeQuiz[currentIdx].questionId;
-                      const isSelected = userAnswers[qId] === opt;
+                      const optText = typeof opt === 'string' ? opt : opt?.text || opt?.id || String(opt);
+                      const optId = typeof opt === 'string' ? opt : opt?.id || opt?.text || String(opt);
+                      const isSelected = userAnswers[qId] === optId || userAnswers[qId] === optText;
 
                       return (
                         <div
                           key={oIdx}
-                          onClick={() => handleSelectAnswer(qId, opt)}
+                          onClick={() => handleSelectAnswer(qId, optId)}
                           className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center gap-3 ${
                             isSelected
                               ? 'border-indigo-brand bg-indigo-50/70 text-indigo-950 font-bold shadow-xs'
@@ -376,7 +378,7 @@ export const PracticeArena: React.FC = () => {
                           >
                             {String.fromCharCode(65 + oIdx)}
                           </div>
-                          <span className="text-xs">{opt}</span>
+                          <span className="text-xs">{optText}</span>
                         </div>
                       );
                     })}

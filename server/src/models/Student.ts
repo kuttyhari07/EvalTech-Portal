@@ -12,6 +12,10 @@ export interface IStudent extends Document {
   createdByStaffId: mongoose.Types.ObjectId;
   status: 'active' | 'archived';
   metadata?: Record<string, any>;
+  xpPoints?: number;
+  streakCount?: number;
+  lastPracticeDate?: Date;
+  solvedPracticeCount?: number;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
@@ -31,6 +35,10 @@ const studentSchema = new Schema<IStudent>(
     createdByStaffId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     status: { type: String, enum: ['active', 'archived'], default: 'active', index: true },
     metadata: { type: Schema.Types.Mixed },
+    xpPoints: { type: Number, default: 0 },
+    streakCount: { type: Number, default: 1 },
+    lastPracticeDate: { type: Date },
+    solvedPracticeCount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

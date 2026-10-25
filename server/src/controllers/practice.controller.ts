@@ -1,35 +1,48 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
-import { Question, QuestionBank, User, ProgrammingQuestion } from '../models';
+import { Question, QuestionBank, User, Student, ProgrammingQuestion } from '../models';
 import { sendSuccess, sendError } from '../utils/response';
 
 export class PracticeController {
   /**
-   * Get student's gamification stats (XP, Daily Streak, Solved Problems)
+   * Get student or user gamification stats (XP, Daily Streak, Solved Problems)
    */
   static async getPracticeStats(req: AuthRequest, res: Response): Promise<void> {
-    const userId = req.user!.userId;
-    const user = await User.findById(userId);
-    if (!user) {
-      sendError(res, 'User not found', 404);
-      return;
+    const userId = req.user?.userId;
+    let userEntity: any = req.user?.dbUser;
+
+    if (!userEntity && userId) {
+      userEntity = (await Student.findById(userId)) || (await User.findById(userId));
     }
 
-    const xpPoints = user.xpPoints || 0;
-    const streakCount = user.streakCount || 1;
-    const solvedPracticeCount = user.solvedPracticeCount || 0;
-    const level = Math.floor(xpPoints / 100) + 1;
-    const nextLevelXp = level * 100;
-    const levelProgressPercent = Math.min(100, Math.round(((xpPoints % 100) / 100) * 100));
+    const xpPoints = userEntity?.xpPoints || 0;
+    const streakCount = userEntity?.streakCount || 1;
+    const solvedPracticeCount = userEntity?.solvedPracticeCount || 0;
+    const currentLevel = Math.floor(xpPoints / 100) + 1;
+    const nextLevelXp = currentLevel * 100;
+    const progressPercent = Math.min(100, Math.round(((xpPoints % 100) / 100) * 100));
+
+    const levelTitles = [
+      'Novice Coder',
+      'Code Apprentice',
+      'Syntax Warrior',
+      'Logic Crusader',
+      'Algorithm Master',
+      'Grandmaster Architect',
+    ];
+    const levelTitle = levelTitles[Math.min(currentLevel - 1, levelTitles.length - 1)];
 
     sendSuccess(res, {
       xpPoints,
       streakCount,
       solvedPracticeCount,
-      level,
-      nextLevelXp,
-      levelProgressPercent,
-      lastPracticeDate: user.lastPracticeDate,
+      level: {
+        currentLevel,
+        nextLevelXp,
+        progressPercent,
+        levelTitle,
+      },
+      lastPracticeDate: userEntity?.lastPracticeDate || null,
     });
   }
 
@@ -37,9 +50,20 @@ export class PracticeController {
    * Get available practice topics and Question Banks
    */
   static async getPracticeTopics(req: AuthRequest, res: Response): Promise<void> {
-    const subjects = await Question.distinct('subject');
-    const banks = await QuestionBank.find({}, 'title subject description tags questionIds').limit(20);
+    const distinctSubjects = await Question.distinct('subject');
+    const distinctTopics = await Question.distinct('topic');
+    const allTopicsSet = new Set([...distinctSubjects, ...distinctTopics].filter(Boolean));
 
+    const topicsList = await Promise.all(
+      Array.from(allTopicsSet).map(async (t) => {
+        const count = await Question.countDocuments({
+          $or: [{ subject: t }, { topic: t }],
+        });
+        return { topic: t, count };
+      })
+    );
+
+    const banks = await QuestionBank.find({}, 'title subject description tags questionIds').limit(20);
     const formattedBanks = banks.map((b) => ({
       id: b._id,
       title: b.title,
@@ -50,7 +74,8 @@ export class PracticeController {
     }));
 
     sendSuccess(res, {
-      subjects: subjects.filter(Boolean),
+      topics: topicsList.filter((item) => item.count > 0),
+      subjects: distinctSubjects.filter(Boolean),
       banks: formattedBanks,
     });
   }
@@ -59,10 +84,10 @@ export class PracticeController {
    * Generate a 5-question practice session
    */
   static async generateQuiz(req: AuthRequest, res: Response): Promise<void> {
-    const { subject, bankId, difficulty, count = 5 } = req.body;
+    const { topic, subject, bankId, difficulty, count = 5 } = req.body;
     const questionLimit = Math.min(Math.max(1, Number(count) || 5), 10);
 
-    let query: any = { isApproved: true };
+    let query: any = {};
 
     if (bankId) {
       const bank = await QuestionBank.findById(bankId);
@@ -70,13 +95,23 @@ export class PracticeController {
         query = { _id: { $in: bank.questionIds } };
       }
     } else {
-      if (subject) query.subject = subject;
-      if (difficulty && difficulty !== 'all') query.difficulty = difficulty;
+      const searchTarget = topic || subject;
+      if (searchTarget) {
+        query.$or = [{ subject: searchTarget }, { topic: searchTarget }];
+      }
+      if (difficulty && difficulty !== 'all') {
+        query.difficulty = difficulty;
+      }
     }
 
-    const questions = await Question.find(query).limit(50);
+    let questions = await Question.find(query).limit(50);
     if (questions.length === 0) {
-      sendError(res, 'No practice questions found for the selected criteria.', 404);
+      // Fallback: If no questions matched the specific topic filter, grab any available questions in the DB
+      questions = await Question.find({}).limit(50);
+    }
+
+    if (questions.length === 0) {
+      sendError(res, 'No practice questions found in repository.', 404);
       return;
     }
 
@@ -87,37 +122,18 @@ export class PracticeController {
     // Format safe questions for practice (hide answers)
     const safeQuestions: any[] = [];
     for (const q of selected) {
-      if (q.type === 'programming') {
-        const prog = await ProgrammingQuestion.findOne({ questionId: q._id });
-        safeQuestions.push({
-          id: q._id,
-          type: 'programming',
-          title: q.title || 'Coding Challenge',
-          subject: q.subject,
-          topic: q.topic,
-          difficulty: q.difficulty,
-          problemStatement: q.text,
-          inputFormat: prog?.inputFormat || '',
-          outputFormat: prog?.outputFormat || '',
-          constraints: prog?.constraints || '',
-          sampleInput: prog?.sampleInput || '',
-          sampleExpectedOutput: prog?.sampleExpectedOutput || '',
-          sampleExplanation: prog?.sampleExplanation || '',
-          starterCode: prog?.starterCode || {},
-          defaultMarks: q.defaultMarks || 10,
-        });
-      } else {
-        safeQuestions.push({
-          id: q._id,
-          type: q.type,
-          text: q.text,
-          subject: q.subject,
-          topic: q.topic,
-          difficulty: q.difficulty,
-          options: q.options || [],
-          defaultMarks: q.defaultMarks || 1,
-        });
-      }
+      safeQuestions.push({
+        questionId: String(q._id),
+        id: String(q._id),
+        topic: q.topic || q.subject || 'General',
+        subject: q.subject || 'General',
+        type: q.type || 'multiple_choice',
+        questionText: q.text,
+        text: q.text,
+        options: q.options || [],
+        marks: q.defaultMarks || 1,
+        defaultMarks: q.defaultMarks || 1,
+      });
     }
 
     sendSuccess(res, {
@@ -132,7 +148,7 @@ export class PracticeController {
    */
   static async submitQuiz(req: AuthRequest, res: Response): Promise<void> {
     const { answers = [] } = req.body;
-    const userId = req.user!.userId;
+    const userId = req.user?.userId;
 
     if (!Array.isArray(answers) || answers.length === 0) {
       sendError(res, 'No answers submitted.', 400);
@@ -140,16 +156,18 @@ export class PracticeController {
     }
 
     let correctCount = 0;
-    const results: any[] = [];
+    let totalMarks = 0;
+    const reviewList: any[] = [];
 
     for (const item of answers) {
-      const q = await Question.findById(item.questionId);
+      const q = await Question.findById(item.questionId || item.id);
       if (!q) continue;
 
+      totalMarks += q.defaultMarks || 1;
       let isCorrect = false;
+
       if (q.type === 'programming') {
-        // Simple functional pass check if student submitted code
-        isCorrect = Boolean(item.answer && item.answer.trim().length > 20);
+        isCorrect = Boolean(item.answer && item.answer.trim().length > 15);
       } else {
         const correctAnswers = q.correctAnswers || [];
         const studentAns = item.answer;
@@ -165,53 +183,72 @@ export class PracticeController {
 
       if (isCorrect) correctCount++;
 
-      results.push({
+      reviewList.push({
         questionId: q._id,
+        questionText: q.text,
+        userAnswer: item.answer || 'Unanswered',
+        correctAnswer: (q.correctAnswers || []).join(', ') || 'See explanation',
         isCorrect,
-        correctAnswers: q.correctAnswers,
-        explanation: q.explanation || 'Reviewed based on foundational principles.',
+        explanation: q.explanation || 'Verified based on foundational topic principles.',
       });
     }
 
-    const earnedXp = correctCount * 20 + 10; // +10 participation XP + 20 per correct answer
+    const accuracy = answers.length > 0 ? Math.round((correctCount / answers.length) * 100) : 0;
+    const earnedXp = correctCount * 20 + 10; // +10 participation + 20 per correct answer
 
-    // Update User Gamification
-    const user = await User.findById(userId);
+    // Update Student or User Gamification record
     let updatedStreak = 1;
     let newXpTotal = earnedXp;
 
-    if (user) {
-      const now = new Date();
-      const lastDate = user.lastPracticeDate ? new Date(user.lastPracticeDate) : null;
+    if (userId) {
+      const userEntity =
+        req.user?.dbUser || (await Student.findById(userId)) || (await User.findById(userId));
+      if (userEntity) {
+        const now = new Date();
+        const lastDate = userEntity.lastPracticeDate ? new Date(userEntity.lastPracticeDate) : null;
 
-      if (lastDate) {
-        const diffDays = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 3600 * 24));
-        if (diffDays === 1) {
-          user.streakCount = (user.streakCount || 1) + 1;
-        } else if (diffDays > 1) {
-          user.streakCount = 1;
+        if (lastDate) {
+          const diffDays = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 3600 * 24));
+          if (diffDays === 1) {
+            userEntity.streakCount = (userEntity.streakCount || 1) + 1;
+          } else if (diffDays > 1) {
+            userEntity.streakCount = 1;
+          }
+        } else {
+          userEntity.streakCount = 1;
         }
-      } else {
-        user.streakCount = 1;
+
+        userEntity.lastPracticeDate = now;
+        userEntity.xpPoints = (userEntity.xpPoints || 0) + earnedXp;
+        userEntity.solvedPracticeCount = (userEntity.solvedPracticeCount || 0) + correctCount;
+        await userEntity.save();
+
+        updatedStreak = userEntity.streakCount || 1;
+        newXpTotal = userEntity.xpPoints || earnedXp;
       }
-
-      user.lastPracticeDate = now;
-      user.xpPoints = (user.xpPoints || 0) + earnedXp;
-      user.solvedPracticeCount = (user.solvedPracticeCount || 0) + correctCount;
-      await user.save();
-
-      updatedStreak = user.streakCount;
-      newXpTotal = user.xpPoints;
     }
 
+    const feedback =
+      accuracy >= 80
+        ? 'Outstanding mastery! Your concepts are sharp.'
+        : accuracy >= 50
+        ? 'Solid performance! Review the explanations to lock in the fundamentals.'
+        : 'Good effort! Review the missed questions below and try another practice run.';
+
     sendSuccess(res, {
+      score: correctCount,
       correctCount,
+      totalMarks: answers.length,
       totalCount: answers.length,
-      accuracyPercent: Math.round((correctCount / answers.length) * 100),
+      accuracy,
+      accuracyPercent: accuracy,
       earnedXp,
+      xpAwarded: earnedXp,
       newXpTotal,
       streakCount: updatedStreak,
-      breakdown: results,
+      feedback,
+      review: reviewList,
+      breakdown: reviewList,
     });
   }
 }
