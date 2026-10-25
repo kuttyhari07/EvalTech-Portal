@@ -389,7 +389,7 @@ export const StaffExamBuilder: React.FC = () => {
 
           {/* Exam Questions Section */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
                 <CardTitle>Question Paper ({examQuestions.length} Questions)</CardTitle>
                 <CardDescription>Select questions and customize marks per question</CardDescription>
@@ -398,6 +398,7 @@ export const StaffExamBuilder: React.FC = () => {
                 type="button"
                 variant="electric"
                 size="sm"
+                className="w-full sm:w-auto"
                 leftIcon={<Plus className="w-4 h-4" />}
                 onClick={() => setIsQuestionPickerOpen(true)}
               >
@@ -653,34 +654,34 @@ export const StaffExamBuilder: React.FC = () => {
         <div className="space-y-4">
           {/* Tab switcher: By Question Bank vs Individual Questions */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-pearl-200 pb-2">
-            <div className="flex items-center gap-1.5 p-1 bg-pearl-100 rounded-xl">
+            <div className="grid grid-cols-2 gap-1.5 p-1 bg-pearl-100 rounded-xl w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => setPickerTab('banks')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                   pickerTab === 'banks'
                     ? 'bg-white text-indigo-brand shadow-subtle'
                     : 'text-midnight-600 hover:text-midnight-950'
                 }`}
               >
-                <Folder className="w-3.5 h-3.5" />
-                <span>📁 By Question Bank ({questionBanks.length})</span>
+                <Folder className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Question Banks ({questionBanks.length})</span>
               </button>
               <button
                 type="button"
                 onClick={() => setPickerTab('individual')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                   pickerTab === 'individual'
                     ? 'bg-white text-indigo-brand shadow-subtle'
                     : 'text-midnight-600 hover:text-midnight-950'
                 }`}
               >
-                <Layers className="w-3.5 h-3.5" />
-                <span>📋 Individual Questions ({bankQuestions.length})</span>
+                <Layers className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Individual Qs ({bankQuestions.length})</span>
               </button>
             </div>
 
-            <div className="text-xs font-bold text-indigo-brand bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 shrink-0">
+            <div className="text-xs font-bold text-indigo-brand bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 self-start sm:self-auto shrink-0">
               {examQuestions.length} Question{examQuestions.length === 1 ? '' : 's'} in Exam
             </div>
           </div>

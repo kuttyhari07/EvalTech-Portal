@@ -85,7 +85,7 @@ export const LandingPage: React.FC = () => {
             </Link>
           </div>
 
-          <div className="mt-12 flex items-center justify-center gap-8 text-xs text-midnight-600">
+          <div className="mt-12 flex flex-wrap items-center justify-center gap-4 sm:gap-8 text-xs text-midnight-600">
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Free 10-Student Tier
             </span>
@@ -102,17 +102,17 @@ export const LandingPage: React.FC = () => {
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-16">
           <div className="rounded-2xl border border-pearl-300/80 bg-midnight-950 p-2 sm:p-3 shadow-2xl">
             {/* Window chrome header */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-midnight-800">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-3 sm:px-4 py-2 border-b border-midnight-800 gap-2">
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-rose-500 inline-block" />
-                <span className="w-3 h-3 rounded-full bg-amber-500 inline-block" />
-                <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" />
-                <span className="text-xs text-pearl-300 font-mono ml-2">evaltech.app/workspace/exams</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block" />
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+                <span className="text-[11px] sm:text-xs text-pearl-300 font-mono ml-2">evaltech.app</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto w-full sm:w-auto scrollbar-none pb-1 sm:pb-0">
                 <button
                   onClick={() => setActivePreviewTab('exam')}
-                  className={`text-xs px-2.5 py-1 rounded font-medium transition-colors ${
+                  className={`text-xs px-2.5 py-1 rounded font-medium whitespace-nowrap transition-colors shrink-0 ${
                     activePreviewTab === 'exam' ? 'bg-indigo-brand text-white' : 'text-pearl-300 hover:text-white'
                   }`}
                 >
@@ -120,7 +120,7 @@ export const LandingPage: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setActivePreviewTab('analytics')}
-                  className={`text-xs px-2.5 py-1 rounded font-medium transition-colors ${
+                  className={`text-xs px-2.5 py-1 rounded font-medium whitespace-nowrap transition-colors shrink-0 ${
                     activePreviewTab === 'analytics' ? 'bg-indigo-brand text-white' : 'text-pearl-300 hover:text-white'
                   }`}
                 >
@@ -128,7 +128,7 @@ export const LandingPage: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setActivePreviewTab('ai')}
-                  className={`text-xs px-2.5 py-1 rounded font-medium transition-colors ${
+                  className={`text-xs px-2.5 py-1 rounded font-medium whitespace-nowrap transition-colors shrink-0 ${
                     activePreviewTab === 'ai' ? 'bg-indigo-brand text-white' : 'text-pearl-300 hover:text-white'
                   }`}
                 >

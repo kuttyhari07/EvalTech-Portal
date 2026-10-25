@@ -2,10 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+
 @layer base {
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+    -webkit-tap-highlight-color: transparent;
+  }
   body {
     @apply bg-pearl-50 text-midnight-900 font-sans;
   }
+}
+
+/* Custom scrollbar utility for mobile-friendly horizontal tabs & chip lists */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 @keyframes fadeIn {
@@ -22,3 +37,4 @@
 .animate-fadeIn {
   animation: fadeIn 0.2s ease-out forwards;
 }
+

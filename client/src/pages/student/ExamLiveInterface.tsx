@@ -532,9 +532,10 @@ export const StudentExamLive: React.FC = () => {
             size="sm"
             onClick={() => setIsSubmitModalOpen(true)}
             rightIcon={<Send className="w-3.5 h-3.5" />}
-            className="text-xs"
+            className="text-xs px-2.5 sm:px-3"
           >
-            Finish Exam
+            <span className="hidden sm:inline">Finish Exam</span>
+            <span className="sm:hidden">Submit</span>
           </Button>
         </div>
       </header>
@@ -544,21 +545,21 @@ export const StudentExamLive: React.FC = () => {
         /* PROGRAMMING QUESTION IDE LAYOUT */
         <div className="flex-1 flex flex-col h-[calc(100vh-61px)] overflow-hidden">
           {/* Subheader Toolbar with Question Switcher and Review Mark */}
-          <div className="bg-midnight-900 border-b border-midnight-800 px-4 py-2 flex items-center justify-between text-xs font-mono text-pearl-300">
-            <div className="flex items-center gap-3">
+          <div className="bg-midnight-900 border-b border-midnight-800 px-3 sm:px-4 py-2 flex items-center justify-between text-xs font-mono text-pearl-300">
+            <div className="flex items-center gap-2 sm:gap-3">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
                 disabled={currentIndex === 0}
-                className="py-1 px-2.5 h-7 text-xs bg-midnight-950 border-midnight-700 text-pearl-200"
+                className="py-1 px-2 sm:px-2.5 h-7 text-xs bg-midnight-950 border-midnight-700 text-pearl-200"
                 leftIcon={<ChevronLeft className="w-3.5 h-3.5" />}
               >
-                Prev
+                <span className="hidden sm:inline">Prev</span>
               </Button>
 
-              <span className="font-bold text-white">
-                Question {currentIndex + 1} of {questions.length} (Programming)
+              <span className="font-bold text-white text-[11px] sm:text-xs">
+                Q{currentIndex + 1}/{questions.length} <span className="hidden sm:inline">(Programming)</span>
               </span>
 
               <Button
@@ -566,10 +567,10 @@ export const StudentExamLive: React.FC = () => {
                 size="sm"
                 onClick={() => setCurrentIndex(Math.min(questions.length - 1, currentIndex + 1))}
                 disabled={currentIndex === questions.length - 1}
-                className="py-1 px-2.5 h-7 text-xs bg-midnight-950 border-midnight-700 text-pearl-200"
+                className="py-1 px-2 sm:px-2.5 h-7 text-xs bg-midnight-950 border-midnight-700 text-pearl-200"
                 rightIcon={<ChevronRight className="w-3.5 h-3.5" />}
               >
-                Next
+                <span className="hidden sm:inline">Next</span>
               </Button>
             </div>
 
@@ -584,15 +585,60 @@ export const StudentExamLive: React.FC = () => {
                 }`}
               >
                 <Bookmark className={`w-3.5 h-3.5 ${isCurrentMarked ? 'fill-current' : ''}`} />
-                <span>{isCurrentMarked ? 'Marked for Review' : 'Mark for Review'}</span>
+                <span className="hidden sm:inline">{isCurrentMarked ? 'Marked for Review' : 'Mark for Review'}</span>
+                <span className="sm:hidden">{isCurrentMarked ? 'Marked' : 'Review'}</span>
               </button>
             </div>
+          </div>
+
+          {/* Mobile View Tab Switcher for Programming Workspace */}
+          <div className="flex lg:hidden items-center border-b border-midnight-800 bg-midnight-950 px-3 py-1.5 gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setMobileTab('problem')}
+              className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                mobileTab === 'problem'
+                  ? 'bg-indigo-brand text-white shadow-subtle'
+                  : 'bg-midnight-900 text-pearl-400 hover:text-white border border-midnight-800'
+              }`}
+            >
+              <FileCode className="w-3.5 h-3.5" />
+              <span>Problem</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab('code')}
+              className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                mobileTab === 'code'
+                  ? 'bg-indigo-brand text-white shadow-subtle'
+                  : 'bg-midnight-900 text-pearl-400 hover:text-white border border-midnight-800'
+              }`}
+            >
+              <Code2 className="w-3.5 h-3.5" />
+              <span>Editor</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab('console')}
+              className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                mobileTab === 'console'
+                  ? 'bg-indigo-brand text-white shadow-subtle'
+                  : 'bg-midnight-900 text-pearl-400 hover:text-white border border-midnight-800'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>Console</span>
+            </button>
           </div>
 
           {/* Desktop Dual-Pane / Mobile Tabs */}
           <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0 overflow-hidden">
             {/* Left Pane: Problem Statement (5 cols on lg) */}
-            <div className="lg:col-span-5 h-full p-3 overflow-hidden border-r border-pearl-200 dark:border-midnight-800">
+            <div
+              className={`lg:col-span-5 h-full p-3 overflow-hidden border-r border-pearl-200 dark:border-midnight-800 ${
+                mobileTab === 'problem' ? 'flex flex-col' : 'hidden lg:flex lg:flex-col'
+              }`}
+            >
               <ProblemStatementPanel
                 questionNumber={currentIndex + 1}
                 totalQuestions={questions.length}
@@ -615,8 +661,16 @@ export const StudentExamLive: React.FC = () => {
             </div>
 
             {/* Right Pane: Code Editor + Execution Console (7 cols on lg) */}
-            <div className="lg:col-span-7 h-full flex flex-col p-3 gap-3 overflow-hidden bg-midnight-950">
-              <div className="flex-1 min-h-[300px] overflow-hidden">
+            <div
+              className={`lg:col-span-7 h-full flex flex-col p-3 gap-3 overflow-hidden bg-midnight-950 ${
+                mobileTab !== 'problem' ? 'flex' : 'hidden lg:flex'
+              }`}
+            >
+              <div
+                className={`flex-1 min-h-[260px] overflow-hidden ${
+                  mobileTab === 'console' ? 'hidden sm:block' : 'block'
+                }`}
+              >
                 <CodeEditor
                   language={currentLang}
                   onLanguageChange={handleLanguageChange}

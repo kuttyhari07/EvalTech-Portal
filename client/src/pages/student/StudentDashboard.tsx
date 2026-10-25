@@ -221,7 +221,7 @@ export const StudentDashboard: React.FC = () => {
         </div>
 
         {/* Student Profile Quick Bar */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <div className="text-right hidden sm:block">
             <div className="text-xs font-bold text-white flex items-center gap-1.5 justify-end">
               <span>{student?.name || 'Student Candidate'}</span>
@@ -237,9 +237,10 @@ export const StudentDashboard: React.FC = () => {
               variant="electric"
               size="sm"
               leftIcon={<Flame className="w-3.5 h-3.5 fill-amber-300 text-amber-300 animate-pulse" />}
-              className="text-xs font-bold"
+              className="text-xs font-bold px-2.5 sm:px-3"
             >
-              Practice Arena
+              <span className="hidden sm:inline">Practice Arena</span>
+              <span className="sm:hidden">Practice</span>
             </Button>
           </Link>
 
@@ -248,9 +249,10 @@ export const StudentDashboard: React.FC = () => {
             size="sm"
             onClick={() => setIsChangePasswordOpen(true)}
             leftIcon={<Key className="w-3.5 h-3.5" />}
-            className="bg-midnight-900 border-midnight-700 text-pearl-200 hover:text-white text-xs"
+            className="bg-midnight-900 border-midnight-700 text-pearl-200 hover:text-white text-xs px-2.5 sm:px-3"
+            title="Security"
           >
-            Security
+            <span className="hidden sm:inline">Security</span>
           </Button>
 
           <Button
@@ -258,9 +260,10 @@ export const StudentDashboard: React.FC = () => {
             size="sm"
             onClick={() => logout()}
             leftIcon={<LogOut className="w-3.5 h-3.5" />}
-            className="bg-midnight-900 border-midnight-700 text-rose-300 hover:text-rose-200 text-xs"
+            className="bg-midnight-900 border-midnight-700 text-rose-300 hover:text-rose-200 text-xs px-2.5 sm:px-3"
+            title="Sign Out"
           >
-            Sign Out
+            <span className="hidden sm:inline">Sign Out</span>
           </Button>
         </div>
       </header>
@@ -305,7 +308,7 @@ export const StudentDashboard: React.FC = () => {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-pearl-200 pb-2 overflow-x-auto">
+        <div className="flex items-center gap-2 border-b border-pearl-200 pb-2 overflow-x-auto scrollbar-none">
           <button
             type="button"
             onClick={() => setActiveTab('exams')}
