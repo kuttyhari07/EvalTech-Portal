@@ -39,6 +39,7 @@ import { StudentExamLive } from '../pages/student/ExamLiveInterface';
 import { StudentExamSubmitted } from '../pages/student/ExamSubmitted';
 import { StudentResultView } from '../pages/student/StudentResultView';
 import { StudentDashboard } from '../pages/student/StudentDashboard';
+import { PracticeArena } from '../pages/student/PracticeArena';
 
 // Protected Route Guard
 const ProtectedRoute: React.FC<{
@@ -91,6 +92,14 @@ export const AppRoutes: React.FC = () => {
         }
       />
       <Route path="/student" element={<Navigate to="/student/dashboard" replace />} />
+      <Route
+        path="/student/practice"
+        element={
+          <ProtectedRoute allowedRoles={['student']}>
+            <PracticeArena />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/exam/join" element={<StudentExamWelcome />} />
       <Route path="/exam/:code" element={<StudentExamWelcome />} />
       <Route path="/exam/:code/take" element={<StudentExamLive />} />

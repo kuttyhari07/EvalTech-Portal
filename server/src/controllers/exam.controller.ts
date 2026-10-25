@@ -1,12 +1,13 @@
 import { Request, Response } from 'express';
 import crypto from 'crypto';
 import { z } from 'zod';
-import { Exam, Question, ClassEnrollment, Student } from '../models';
+import { Exam, Question, ClassEnrollment, Student, ExamAttempt, StudentAnswer } from '../models';
 import { AuthRequest } from '../middleware/auth';
 import { sendSuccess, sendError } from '../utils/response';
 import { EXAM_STATUS, ROLES } from '../constants';
 import { EmailService } from '../services/email.service';
 import { recordAuditLog } from '../utils/audit';
+import { EvaluationService } from '../services/evaluation.service';
 
 function generateExamCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -302,5 +303,157 @@ export class ExamController {
     };
 
     sendSuccess(res, publicData);
+  }
+
+  /**
+   * Live Proctoring & Exam Monitoring Dashboard for Staff
+   */
+  static async getLiveMonitoring(req: AuthRequest, res: Response): Promise<void> {
+    const { id } = req.params;
+
+    const exam = await Exam.findById(id);
+    if (!exam) {
+      sendError(res, 'Exam not found', 404);
+      return;
+    }
+
+    const attempts = await ExamAttempt.find({ examId: id }).sort({ startedAt: -1 });
+
+    const totalQuestions = exam.questions?.length || 0;
+    const attemptIds = attempts.map((a) => a._id);
+
+    // Fetch all student answers for these attempts to count answered questions
+    const answers = await StudentAnswer.find({ attemptId: { $in: attemptIds }, isAnswered: true }, 'attemptId questionId');
+    const answersCountMap = new Map<string, number>();
+    for (const ans of answers) {
+      const aId = ans.attemptId.toString();
+      answersCountMap.set(aId, (answersCountMap.get(aId) || 0) + 1);
+    }
+
+    const now = new Date();
+    let inProgressCount = 0;
+    let submittedCount = 0;
+    let flaggedViolationsCount = 0;
+
+    const attemptsData = attempts.map((attempt) => {
+      const isExpired = now > new Date(attempt.expiresAt);
+      const isActive = attempt.status === 'in_progress' && !isExpired;
+
+      if (isActive) inProgressCount++;
+      else if (attempt.status === 'submitted' || attempt.status === 'evaluated') submittedCount++;
+
+      // Violations detection
+      const violations = (attempt.clientEvents || []).filter((e) =>
+        ['tab_blur', 'tab_hidden', 'fullscreen_exit', 'devtools_opened'].includes(e.event)
+      );
+
+      if (violations.length > 0) flaggedViolationsCount++;
+
+      const answeredCount =
+        (answersCountMap.get(attempt._id.toString()) || 0) +
+        (attempt.programmingDrafts?.filter((d) => d.sourceCode?.trim()?.length > 0)?.length || 0);
+
+      const timeRemainingSeconds = Math.max(
+        0,
+        Math.floor((new Date(attempt.expiresAt).getTime() - now.getTime()) / 1000)
+      );
+
+      return {
+        id: attempt._id,
+        student: attempt.studentInfo,
+        status: isActive ? 'in_progress' : isExpired ? 'timed_out' : attempt.status,
+        startedAt: attempt.startedAt,
+        expiresAt: attempt.expiresAt,
+        submittedAt: attempt.submittedAt,
+        timeSpentSeconds: attempt.timeSpentSeconds,
+        timeRemainingSeconds,
+        answeredCount: Math.min(answeredCount, totalQuestions),
+        totalQuestions,
+        progressPercent: totalQuestions > 0 ? Math.min(100, Math.round((answeredCount / totalQuestions) * 100)) : 0,
+        violationsCount: violations.length,
+        recentViolations: violations.slice(-5),
+        ipAddress: attempt.ipAddress,
+        userAgent: attempt.userAgent,
+      };
+    });
+
+    sendSuccess(res, {
+      exam: {
+        id: exam._id,
+        title: exam.title,
+        examCode: exam.examCode,
+        durationMinutes: exam.durationMinutes,
+        totalQuestions,
+        status: exam.status,
+      },
+      stats: {
+        totalAttempts: attempts.length,
+        inProgressCount,
+        submittedCount,
+        flaggedViolationsCount,
+      },
+      liveBroadcasts: exam.liveBroadcasts || [],
+      attempts: attemptsData,
+    });
+  }
+
+  /**
+   * Broadcast an instant message to all candidates taking the exam
+   */
+  static async broadcastLiveMessage(req: AuthRequest, res: Response): Promise<void> {
+    const { id } = req.params;
+    const { message } = req.body;
+
+    if (!message || !message.trim()) {
+      sendError(res, 'Announcement message is required', 400);
+      return;
+    }
+
+    const exam = await Exam.findById(id);
+    if (!exam) {
+      sendError(res, 'Exam not found', 404);
+      return;
+    }
+
+    const senderName = req.user?.dbUser?.name || 'Exam Proctor';
+    const broadcastItem = {
+      message: message.trim(),
+      timestamp: new Date(),
+      senderName,
+    };
+
+    if (!exam.liveBroadcasts) exam.liveBroadcasts = [];
+    exam.liveBroadcasts.push(broadcastItem);
+    await exam.save();
+
+    sendSuccess(res, exam.liveBroadcasts, 'Broadcast sent to candidates successfully.');
+  }
+
+  /**
+   * Proctor force-terminates a student attempt for cheating
+   */
+  static async forceTerminateAttempt(req: AuthRequest, res: Response): Promise<void> {
+    const { id, attemptId } = req.params;
+    const { reason } = req.body;
+
+    const attempt = await ExamAttempt.findOne({ _id: attemptId, examId: id });
+    if (!attempt) {
+      sendError(res, 'Attempt not found for this exam', 404);
+      return;
+    }
+
+    attempt.status = 'submitted';
+    attempt.submittedAt = new Date();
+    attempt.clientEvents.push({
+      event: 'forced_termination_by_proctor',
+      timestamp: new Date(),
+      details: reason || 'Exam Proctor terminated session due to integrity violation',
+    });
+    await attempt.save();
+
+    // Trigger evaluation
+    await EvaluationService.evaluateAttempt(attempt._id).catch(() => {});
+
+    sendSuccess(res, null, 'Attempt successfully terminated and submitted for evaluation.');
   }
 }

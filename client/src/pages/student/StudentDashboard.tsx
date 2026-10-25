@@ -30,6 +30,7 @@ import {
   Hash,
   Crown,
   Medal,
+  Flame,
 } from 'lucide-react';
 
 export const StudentDashboard: React.FC = () => {
@@ -231,6 +232,17 @@ export const StudentDashboard: React.FC = () => {
             </div>
           </div>
 
+          <Link to="/student/practice">
+            <Button
+              variant="electric"
+              size="sm"
+              leftIcon={<Flame className="w-3.5 h-3.5 fill-amber-300 text-amber-300 animate-pulse" />}
+              className="text-xs font-bold"
+            >
+              Practice Arena
+            </Button>
+          </Link>
+
           <Button
             variant="outline"
             size="sm"
@@ -332,6 +344,16 @@ export const StudentDashboard: React.FC = () => {
             <Award className="w-4 h-4" />
             My Performance History ({pastResults.length})
           </button>
+
+          <Link to="/student/practice" className="shrink-0">
+            <button
+              type="button"
+              className="px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 bg-gradient-to-r from-amber-500/10 to-indigo-500/10 text-amber-800 hover:bg-amber-100/60 border border-amber-300/70 shadow-xs"
+            >
+              <Flame className="w-4 h-4 text-amber-500 fill-amber-500" />
+              Daily Practice Arena (+20 XP 🔥)
+            </button>
+          </Link>
         </div>
 
         {loading ? (

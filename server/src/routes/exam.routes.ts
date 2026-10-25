@@ -18,5 +18,8 @@ router.put('/:id', requireRoles(ROLES.STAFF, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN)
 router.delete('/:id', requireRoles(ROLES.STAFF, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN), ExamController.deleteExam);
 router.post('/:id/publish', requireRoles(ROLES.STAFF, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN), ExamController.publishExam);
 router.post('/:id/unpublish', requireRoles(ROLES.STAFF, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN), ExamController.unpublishExam);
+router.get('/:id/live-monitoring', requireRoles(ROLES.STAFF, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN), ExamController.getLiveMonitoring);
+router.post('/:id/live-broadcast', requireRoles(ROLES.STAFF, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN), ExamController.broadcastLiveMessage);
+router.post('/:id/force-terminate/:attemptId', requireRoles(ROLES.STAFF, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN), ExamController.forceTerminateAttempt);
 
 export default router;

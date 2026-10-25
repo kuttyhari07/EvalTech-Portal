@@ -41,6 +41,11 @@ export interface IExam extends Document {
   sebConfigKey?: string;
   startPassword?: string;
   exitPassword?: string;
+  liveBroadcasts: {
+    message: string;
+    timestamp: Date;
+    senderName: string;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -94,6 +99,13 @@ const examSchema = new Schema<IExam>(
     sebConfigKey: { type: String, trim: true },
     startPassword: { type: String, trim: true },
     exitPassword: { type: String, trim: true },
+    liveBroadcasts: [
+      {
+        message: { type: String, required: true },
+        timestamp: { type: Date, default: Date.now },
+        senderName: { type: String, default: 'Exam Proctor' },
+      },
+    ],
   },
   { timestamps: true }
 );

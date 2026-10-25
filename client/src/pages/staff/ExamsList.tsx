@@ -19,13 +19,16 @@ import {
   Calendar,
   Edit3,
   Trash2,
+  Radio,
 } from 'lucide-react';
+import { LiveExamMonitorModal } from '../../components/proctor/LiveExamMonitorModal';
 
 export const StaffExamsList: React.FC = () => {
   const [exams, setExams] = useState<ExamItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'published' | 'draft'>('all');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [activeMonitoringExam, setActiveMonitoringExam] = useState<{ id: string; title: string } | null>(null);
 
   const fetchExams = async () => {
     try {
@@ -210,30 +213,53 @@ export const StaffExamsList: React.FC = () => {
                   </div>
                 </CardContent>
 
-                <div className="p-6 pt-0 border-t border-pearl-100 flex items-center justify-between gap-3">
-                  <Button
-                    variant={isPublished ? 'outline' : 'primary'}
-                    size="sm"
-                    className="w-1/2"
-                    onClick={() => handleTogglePublish(exam)}
-                  >
-                    {isPublished ? 'Unpublish Exam' : 'Publish Live'}
-                  </Button>
-                  <Link to={`/staff/results?examId=${exam._id}`} className="w-1/2">
+                <div className="p-6 pt-0 border-t border-pearl-100 flex flex-col gap-2">
+                  <div className="flex items-center justify-between gap-3">
                     <Button
-                      variant="secondary"
+                      variant={isPublished ? 'outline' : 'primary'}
+                      size="sm"
+                      className="w-1/2"
+                      onClick={() => handleTogglePublish(exam)}
+                    >
+                      {isPublished ? 'Unpublish Exam' : 'Publish Live'}
+                    </Button>
+                    <Link to={`/staff/results?examId=${exam._id}`} className="w-1/2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="w-full"
+                        leftIcon={<BarChart3 className="w-3.5 h-3.5" />}
+                      >
+                        View Results
+                      </Button>
+                    </Link>
+                  </div>
+
+                  {isPublished && (
+                    <Button
+                      variant="electric"
                       size="sm"
                       className="w-full"
-                      leftIcon={<BarChart3 className="w-3.5 h-3.5" />}
+                      leftIcon={<Radio className="w-3.5 h-3.5 text-rose-400 animate-pulse" />}
+                      onClick={() => setActiveMonitoringExam({ id: exam._id, title: exam.title })}
                     >
-                      View Results
+                      Live Proctoring & Telemetry
                     </Button>
-                  </Link>
+                  )}
                 </div>
               </Card>
             );
           })}
         </div>
+      )}
+
+      {/* Live Exam Proctoring Modal */}
+      {activeMonitoringExam && (
+        <LiveExamMonitorModal
+          examId={activeMonitoringExam.id}
+          examTitle={activeMonitoringExam.title}
+          onClose={() => setActiveMonitoringExam(null)}
+        />
       )}
     </div>
   );

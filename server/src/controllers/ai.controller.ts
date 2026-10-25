@@ -298,6 +298,30 @@ export class AIController {
     );
   }
 
+  static async reviewCode(req: AuthRequest, res: Response): Promise<void> {
+    const { sourceCode, language, problemTitle, problemStatement, constraints } = req.body;
+
+    if (!sourceCode || !sourceCode.trim()) {
+      sendError(res, 'Source code is required for review.', 400);
+      return;
+    }
+
+    const userId = req.user!.userId;
+    const orgId = req.user?.organizationId;
+
+    const review = await AIQuestionService.reviewCodeWithAI({
+      userId,
+      organizationId: orgId,
+      sourceCode: sourceCode.trim(),
+      language: language || 'python',
+      problemTitle,
+      problemStatement,
+      constraints,
+    });
+
+    sendSuccess(res, review, 'AI Code review and complexity analysis completed.');
+  }
+
   static async assistantDraft(req: AuthRequest, res: Response): Promise<void> {
     const { subject, examTitle, durationMinutes } = req.body;
 

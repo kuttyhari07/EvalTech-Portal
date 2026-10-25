@@ -11,6 +11,8 @@ router.get('/student-view', ResultController.getStudentReleasedResult);
 router.use(authenticate);
 
 router.get('/exam/:examId', ResultController.getExamResults);
+router.get('/exam/:examId/export-csv', ResultController.exportExamResultsCsv);
+router.get('/student/analytics', ResultController.getStudentAnalytics);
 router.post('/grade/:attemptId/:questionId', ResultController.gradeSubjectiveQuestion);
 router.post('/release/:examId', ResultController.toggleReleaseResults);
 router.post('/email/:examId', ResultController.emailResultsToStudents);

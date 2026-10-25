@@ -15,6 +15,10 @@ export interface IUser extends Document {
   passwordResetToken?: string;
   passwordResetExpires?: Date;
   currentOrganizationId?: mongoose.Types.ObjectId;
+  xpPoints: number;
+  streakCount: number;
+  lastPracticeDate?: Date;
+  solvedPracticeCount: number;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
@@ -45,6 +49,10 @@ const userSchema = new Schema<IUser>(
     passwordResetToken: { type: String },
     passwordResetExpires: { type: Date },
     currentOrganizationId: { type: Schema.Types.ObjectId, ref: 'Organization' },
+    xpPoints: { type: Number, default: 0 },
+    streakCount: { type: Number, default: 1 },
+    lastPracticeDate: { type: Date },
+    solvedPracticeCount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

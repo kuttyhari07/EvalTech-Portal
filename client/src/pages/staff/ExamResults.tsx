@@ -28,7 +28,11 @@ import {
   Clock,
   Sparkles,
   Edit3,
+  Download,
+  Printer,
+  Radio,
 } from 'lucide-react';
+import { LiveExamMonitorModal } from '../../components/proctor/LiveExamMonitorModal';
 
 export const StaffExamResults: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -44,6 +48,8 @@ export const StaffExamResults: React.FC = () => {
   // Release & Email state
   const [isReleasing, setIsReleasing] = useState(false);
   const [isEmailing, setIsEmailing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isMonitoringOpen, setIsMonitoringOpen] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   // Subjective Grading Modal
@@ -52,6 +58,36 @@ export const StaffExamResults: React.FC = () => {
   const [gradingMarks, setGradingMarks] = useState<number>(0);
   const [gradingFeedback, setGradingFeedback] = useState<string>('');
   const [savingGrade, setSavingGrade] = useState(false);
+
+  const handleExportCsv = async () => {
+    if (!selectedExamId) return;
+    setIsExporting(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/results/exam/${selectedExamId}/export-csv`, {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+        },
+      });
+      if (!response.ok) throw new Error('Failed to generate results CSV.');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeTitle = (examMeta?.title || 'exam').replace(/[^a-zA-Z0-9_-]/g, '_');
+      a.download = `${safeTitle}_results.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setActionSuccess('Official CSV report exported successfully!');
+      setTimeout(() => setActionSuccess(null), 3000);
+    } catch (err: any) {
+      alert(err.message || 'Export failed.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   useEffect(() => {
     api.get('/exams').then((res) => {
@@ -209,14 +245,39 @@ export const StaffExamResults: React.FC = () => {
                 </span>
               </div>
 
-              <div className="flex items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Radio className="w-3.5 h-3.5 text-rose-500 animate-pulse" />}
+                  onClick={() => setIsMonitoringOpen(true)}
+                >
+                  Live Proctoring
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Download className="w-3.5 h-3.5 text-indigo-brand" />}
+                  onClick={handleExportCsv}
+                  isLoading={isExporting}
+                >
+                  Export CSV
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Printer className="w-3.5 h-3.5 text-midnight-600" />}
+                  onClick={() => window.print()}
+                >
+                  Print Report
+                </Button>
                 <Button
                   variant={areResultsReleased ? 'outline' : 'primary'}
                   size="sm"
                   onClick={handleToggleRelease}
                   isLoading={isReleasing}
                 >
-                  {areResultsReleased ? 'Hide / Unrelease Results' : 'Release Results to Students'}
+                  {areResultsReleased ? 'Hide / Unrelease Results' : 'Release Results'}
                 </Button>
                 {areResultsReleased && (
                   <Button
@@ -226,7 +287,7 @@ export const StaffExamResults: React.FC = () => {
                     onClick={handleEmailResults}
                     isLoading={isEmailing}
                   >
-                    Email Results to All Students
+                    Email All
                   </Button>
                 )}
               </div>
@@ -487,6 +548,15 @@ export const StaffExamResults: React.FC = () => {
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* Live Proctoring Monitor Modal */}
+      {isMonitoringOpen && selectedExamId && (
+        <LiveExamMonitorModal
+          examId={selectedExamId}
+          examTitle={examMeta?.title || 'Active Examination'}
+          onClose={() => setIsMonitoringOpen(false)}
+        />
       )}
     </div>
   );

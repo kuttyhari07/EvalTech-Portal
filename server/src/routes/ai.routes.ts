@@ -10,6 +10,7 @@ router.post('/generate-questions', AIController.generateQuestions);
 router.post('/generate-programming-question', AIController.generateProgrammingQuestion);
 router.post('/generate-from-document', AIController.generateFromDocument);
 router.post('/create-bank-with-questions', AIController.createBankWithQuestions);
+router.post('/review-code', AIController.reviewCode);
 router.post('/save-approved', AIController.saveApprovedQuestions);
 router.post('/assistant', AIController.assistantDraft);
 

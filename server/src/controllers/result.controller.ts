@@ -198,4 +198,150 @@ export class ResultController {
       questionBreakdown: exam.showExplanationsAfterSubmission ? result.questionBreakdown : undefined,
     });
   }
+
+  static async exportExamResultsCsv(req: AuthRequest, res: Response): Promise<void> {
+    const { examId } = req.params;
+
+    const exam = await Exam.findById(examId);
+    if (!exam) {
+      sendError(res, 'Exam not found', 404);
+      return;
+    }
+
+    const results = await ExamResult.find({ examId }).sort({ totalScore: -1 });
+    const attempts = await ExamAttempt.find({ examId });
+    const attemptMap = new Map<string, any>();
+    for (const a of attempts) {
+      attemptMap.set(a._id.toString(), a);
+    }
+
+    const headers = [
+      'Rank',
+      'Student Name',
+      'Roll Number',
+      'Email',
+      'Total Marks',
+      'Max Marks',
+      'Percentage (%)',
+      'Result Status',
+      'MCQ Marks',
+      'Coding Marks',
+      'Time Spent (min)',
+      'Violations Count',
+      'Submission Date',
+    ];
+
+    const rows = results.map((r, index) => {
+      const attempt = r.attemptId ? attemptMap.get(r.attemptId.toString()) : null;
+      const violationsCount =
+        attempt?.clientEvents?.filter((e: any) =>
+          ['tab_blur', 'tab_hidden', 'fullscreen_exit', 'devtools_opened'].includes(e.event)
+        )?.length || 0;
+      const timeSpentMin = attempt?.timeSpentSeconds ? (attempt.timeSpentSeconds / 60).toFixed(1) : '0';
+      const mcqScore = r.totalScore - (r.programmingScore || 0);
+
+      return [
+        index + 1,
+        `"${(r.studentInfo?.name || 'Student').replace(/"/g, '""')}"`,
+        `"${(r.studentInfo?.rollNo || '-').replace(/"/g, '""')}"`,
+        `"${(r.studentInfo?.email || '-').replace(/"/g, '""')}"`,
+        r.totalScore,
+        r.maxScore,
+        `${r.percentage}%`,
+        r.isPassed ? 'PASSED' : 'FAILED',
+        mcqScore,
+        r.programmingScore || 0,
+        timeSpentMin,
+        violationsCount,
+        `"${new Date(r.evaluatedAt || r.createdAt).toLocaleString()}"`,
+      ].join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const safeTitle = exam.title.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="EvalTech_${safeTitle}_Results.csv"`);
+    res.status(200).send(csvContent);
+  }
+
+  static async getStudentAnalytics(req: AuthRequest, res: Response): Promise<void> {
+    const userId = req.user!.userId;
+    const targetEmail = (req.query.email as string) || req.user?.email;
+
+    // Find all results for this student
+    const filter: any = {
+      $or: [
+        { studentId: userId },
+        { 'studentInfo.email': targetEmail?.toLowerCase() },
+      ],
+    };
+
+    const results = await ExamResult.find(filter).populate('examId');
+
+    // Aggregate topic performance
+    const topicStatsMap = new Map<string, { subject: string; correct: number; total: number; marksEarned: number; marksMax: number }>();
+
+    for (const r of results) {
+      const examSubject = (r.examId as any)?.subject || 'General';
+      for (const q of r.questionBreakdown || []) {
+        const topicName = (q as any).topic || examSubject;
+        const current = topicStatsMap.get(topicName) || {
+          subject: examSubject,
+          correct: 0,
+          total: 0,
+          marksEarned: 0,
+          marksMax: 0,
+        };
+
+        current.total += 1;
+        if (q.isCorrect) current.correct += 1;
+        current.marksEarned += q.marksObtained || 0;
+        current.marksMax += q.maxMarks || 1;
+
+        topicStatsMap.set(topicName, current);
+      }
+    }
+
+    const topics = Array.from(topicStatsMap.entries()).map(([topic, data]) => {
+      const accuracy = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
+      let masteryLevel: 'strong' | 'moderate' | 'weak' = 'moderate';
+      if (accuracy >= 75) masteryLevel = 'strong';
+      else if (accuracy < 50) masteryLevel = 'weak';
+
+      return {
+        topic,
+        subject: data.subject,
+        totalQuestions: data.total,
+        correctQuestions: data.correct,
+        accuracyPercent: accuracy,
+        masteryLevel,
+      };
+    });
+
+    // Sort weakest first for study recommendations
+    topics.sort((a, b) => a.accuracyPercent - b.accuracyPercent);
+
+    const weakTopics = topics.filter((t) => t.masteryLevel === 'weak');
+    const strongTopics = topics.filter((t) => t.masteryLevel === 'strong');
+
+    const coachingFeedback = {
+      strengths: strongTopics.map((t) => t.topic),
+      criticalGaps: weakTopics.map((t) => t.topic),
+      recommendation:
+        weakTopics.length > 0
+          ? `Focus your upcoming study sessions on ${weakTopics.slice(0, 3).map((t) => t.topic).join(', ')}. Practice more coding problems and review fundamental concepts.`
+          : 'Outstanding consistency across all examined topics! Continue daily mock practice to maintain peak retention.',
+    };
+
+    sendSuccess(res, {
+      totalExamsTaken: results.length,
+      averagePercentage:
+        results.length > 0
+          ? Math.round(results.reduce((acc, r) => acc + (r.percentage || 0), 0) / results.length)
+          : 0,
+      topics,
+      coachingFeedback,
+    });
+  }
 }
