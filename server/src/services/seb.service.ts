@@ -47,7 +47,7 @@ export class SebService {
     <key>allowQuit</key>
     <true/>
     <key>ignoreExitKeys</key>
-    <true/>
+    <false/>
     <key>hashedQuitPassword</key>
     <string>${hashedQuitPassword}</string>
     <key>exitKey1</key>
@@ -57,7 +57,7 @@ export class SebService {
     <key>exitKey3</key>
     <integer>5</integer>
     <key>quitURL</key>
-    <string>${escapeXml(quitUrl || startUrl + '/submitted')}</string>
+    <string>${escapeXml(quitUrl || startUrl + '/quit')}</string>
     <key>quitURLConfirm</key>
     <true/>
     <key>browserExamKey</key>
@@ -85,7 +85,7 @@ export class SebService {
     <key>enableF4</key>
     <false/>
     <key>enableF5</key>
-    <true/>
+    <false/>
     <key>enableF6</key>
     <false/>
     <key>enableF7</key>
@@ -113,9 +113,13 @@ export class SebService {
     <key>allowSpellCheck</key>
     <false/>
     <key>showTaskBar</key>
-    <false/>
-    <key>showReloadButton</key>
     <true/>
+    <key>showQuitButton</key>
+    <true/>
+    <key>taskBarHeight</key>
+    <integer>40</integer>
+    <key>showReloadButton</key>
+    <false/>
     <key>showTime</key>
     <true/>
     <key>showInputLanguage</key>

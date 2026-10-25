@@ -4,11 +4,15 @@ import confetti from 'canvas-confetti';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
-import { CheckCircle2, Clock, Sparkles, Home, ArrowRight } from 'lucide-react';
+import { CheckCircle2, Clock, Sparkles, Home, ArrowRight, Power, ShieldCheck } from 'lucide-react';
 
 export const StudentExamSubmitted: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const [result, setResult] = useState<any>(null);
+
+  const isSEB =
+    typeof navigator !== 'undefined' &&
+    (navigator.userAgent.includes('SEB') || navigator.userAgent.includes('SafeExamBrowser'));
 
   useEffect(() => {
     // Fire festive confetti animation
@@ -72,13 +76,40 @@ export const StudentExamSubmitted: React.FC = () => {
               </div>
             )}
 
-            <div className="flex flex-col gap-2.5 pt-2">
-              <Link to="/">
-                <Button variant="outline" className="w-full" leftIcon={<Home className="w-4 h-4" />}>
-                  Return to Home
-                </Button>
-              </Link>
-            </div>
+            {isSEB ? (
+              <div className="space-y-3 pt-2">
+                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-950 text-left flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0 text-amber-700">
+                    <Power className="w-5 h-5 text-red-600" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-amber-950 text-sm block">Exit Safe Exam Browser Session</span>
+                    <p className="text-[11px] text-amber-800 mt-1 leading-relaxed">
+                      To safely close the locked browser, click the red <strong>Power button</strong> in the bottom-right taskbar, or click the exit button below. If an exit password was set by your invigilator, you will be prompted to enter it.
+                    </p>
+                  </div>
+                </div>
+
+                <a href={`/exam/${code}/quit`} className="block w-full">
+                  <Button
+                    variant="danger"
+                    size="lg"
+                    className="w-full justify-center shadow-lg font-bold text-sm py-3"
+                    leftIcon={<Power className="w-5 h-5" />}
+                  >
+                    Quit Safe Exam Browser
+                  </Button>
+                </a>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2.5 pt-2">
+                <Link to="/">
+                  <Button variant="outline" className="w-full" leftIcon={<Home className="w-4 h-4" />}>
+                    Return to Home
+                  </Button>
+                </Link>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

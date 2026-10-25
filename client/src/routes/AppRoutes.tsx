@@ -104,6 +104,7 @@ export const AppRoutes: React.FC = () => {
       <Route path="/exam/:code" element={<StudentExamWelcome />} />
       <Route path="/exam/:code/take" element={<StudentExamLive />} />
       <Route path="/exam/:code/submitted" element={<StudentExamSubmitted />} />
+      <Route path="/exam/:code/quit" element={<StudentExamSubmitted />} />
       <Route path="/student/results" element={<StudentResultView />} />
 
       {/* Staff / Teacher Dashboard */}

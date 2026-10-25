@@ -486,7 +486,7 @@ export class ExamController {
     }
 
     const startUrl = `${clientBaseUrl}/exam/${exam.examCode}`;
-    const quitUrl = `${clientBaseUrl}/exam/${exam.examCode}/submitted`;
+    const quitUrl = `${clientBaseUrl}/exam/${exam.examCode}/quit`;
 
     const sebXml = SebService.generateSebXml({
       examCode: exam.examCode,
