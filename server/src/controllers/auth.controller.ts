@@ -404,12 +404,7 @@ export class AuthController {
     user.passwordResetExpires = new Date(Date.now() + 3600000); // 1 hour
     await user.save();
 
-    const resetLink = `${process.env.CLIENT_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}&email=${encodeURIComponent(user.email)}`;
-    EmailService.sendMail(
-      user.email,
-      'Reset your EvalTech Password',
-      `<p>Hello ${user.name},</p><p>Click the link below to reset your password:</p><p><a href="${resetLink}">Reset Password</a></p><p>This link expires in 1 hour.</p>`
-    ).catch(console.error);
+    EmailService.sendPasswordResetEmail(user.email, user.name, resetToken).catch(console.error);
 
     sendSuccess(res, null, 'If that email is registered, password reset instructions have been sent.');
   }

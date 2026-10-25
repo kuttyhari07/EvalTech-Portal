@@ -62,22 +62,119 @@ export class EmailService {
     `;
   }
 
-  static async sendMail(to: string, subject: string, html: string): Promise<boolean> {
-    try {
-      const transporter = this.getTransporter();
-      const info = await transporter.sendMail({
-        from: config.EMAIL_FROM,
+  private static getSenderInfo() {
+    const fromStr = config.EMAIL_FROM || 'EvalTech <noreply@evaltech.io>';
+    const match = fromStr.match(/^(?:(.*)<)?([^<>]+)>?$/);
+    const name = match?.[1]?.trim() || 'EvalTech';
+    const email = match?.[2]?.trim() || 'noreply@evaltech.io';
+    return { name, email };
+  }
+
+  private static async sendViaBrevo(to: string, subject: string, html: string): Promise<string> {
+    if (!config.BREVO_API_KEY) {
+      throw new Error('Brevo API key not configured');
+    }
+
+    const { name, email } = this.getSenderInfo();
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': config.BREVO_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name, email },
+        to: [{ email: to }],
+        subject,
+        htmlContent: html,
+      }),
+    });
+
+    if (!res.ok) {
+      const err: any = await res.json().catch(() => ({}));
+      throw new Error(`Brevo HTTP ${res.status}: ${err.message || res.statusText}`);
+    }
+
+    const data: any = await res.json();
+    return data.messageId || 'brevo-sent';
+  }
+
+  private static async sendViaResend(to: string, subject: string, html: string): Promise<string> {
+    if (!config.RESEND_API_KEY) {
+      throw new Error('Resend API key not configured');
+    }
+
+    const { name } = this.getSenderInfo();
+    // Default to onboarding@resend.dev unless a custom domain is verified
+    const from = `${name} <onboarding@resend.dev>`;
+
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${config.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from,
         to,
         subject,
         html,
-      });
+      }),
+    });
 
-      console.log(`[Email] Dispatched to ${to} | Subject: "${subject}" | MessageId: ${info.messageId}`);
-      return true;
-    } catch (err: any) {
-      console.error(`[Email] Failed to send email to ${to}:`, err.message);
-      return false;
+    if (!res.ok) {
+      const err: any = await res.json().catch(() => ({}));
+      throw new Error(`Resend HTTP ${res.status}: ${err.message || res.statusText}`);
     }
+
+    const data: any = await res.json();
+    return data.id || 'resend-sent';
+  }
+
+  private static async sendViaSmtp(to: string, subject: string, html: string): Promise<string> {
+    const transporter = this.getTransporter();
+    const info = await transporter.sendMail({
+      from: config.EMAIL_FROM,
+      to,
+      subject,
+      html,
+    });
+    return info.messageId || 'smtp-sent';
+  }
+
+  static async sendMail(to: string, subject: string, html: string): Promise<boolean> {
+    const providers: Array<{ name: string; fn: () => Promise<string> }> = [];
+
+    // Prioritize providers according to config
+    if (config.EMAIL_PROVIDER === 'brevo') {
+      if (config.BREVO_API_KEY) providers.push({ name: 'Brevo', fn: () => this.sendViaBrevo(to, subject, html) });
+      if (config.RESEND_API_KEY) providers.push({ name: 'Resend', fn: () => this.sendViaResend(to, subject, html) });
+    } else if (config.EMAIL_PROVIDER === 'resend') {
+      if (config.RESEND_API_KEY) providers.push({ name: 'Resend', fn: () => this.sendViaResend(to, subject, html) });
+      if (config.BREVO_API_KEY) providers.push({ name: 'Brevo', fn: () => this.sendViaBrevo(to, subject, html) });
+    } else {
+      // Auto: Brevo first (supports sending to any domain/recipient without sandbox restriction), then Resend, then SMTP
+      if (config.BREVO_API_KEY) providers.push({ name: 'Brevo', fn: () => this.sendViaBrevo(to, subject, html) });
+      if (config.RESEND_API_KEY) providers.push({ name: 'Resend', fn: () => this.sendViaResend(to, subject, html) });
+    }
+
+    // SMTP Fallback
+    providers.push({ name: 'SMTP', fn: () => this.sendViaSmtp(to, subject, html) });
+
+    let lastError: Error | null = null;
+    for (const provider of providers) {
+      try {
+        const messageId = await provider.fn();
+        console.log(`[Email] (${provider.name}) Dispatched to ${to} | Subject: "${subject}" | Id: ${messageId}`);
+        return true;
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[Email] ${provider.name} delivery failed for ${to}: ${err.message}. Trying next provider...`);
+      }
+    }
+
+    console.error(`[Email] All providers failed for ${to}:`, lastError?.message);
+    return false;
   }
 
   static async sendVerificationEmail(email: string, name: string, token: string): Promise<boolean> {
@@ -94,6 +191,22 @@ export class EmailService {
       `
     );
     return this.sendMail(email, 'Verify your EvalTech Account', html);
+  }
+
+  static async sendPasswordResetEmail(email: string, name: string, token: string): Promise<boolean> {
+    const link = `${config.CLIENT_URL}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
+    const html = this.wrapTemplate(
+      'Reset Your EvalTech Password',
+      `
+        <p>Hello ${name},</p>
+        <p>We received a request to reset your password for your EvalTech account. Click the button below to choose a new password:</p>
+        <div style="text-align: center;">
+          <a href="${link}" class="btn">Reset Password</a>
+        </div>
+        <p style="font-size: 13px; color: #94A3B8; margin-top: 24px;">This link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.</p>
+      `
+    );
+    return this.sendMail(email, 'Reset your EvalTech Password', html);
   }
 
   static async sendStaffInvitation(

@@ -20,6 +20,9 @@ const envSchema = z.object({
   RAZORPAY_WEBHOOK_SECRET: z.string().default('whsec_placeholder_secret'),
 
   // Email
+  EMAIL_PROVIDER: z.enum(['brevo', 'resend', 'smtp', 'auto']).default('auto'),
+  BREVO_API_KEY: z.string().optional(),
+  RESEND_API_KEY: z.string().optional(),
   SMTP_HOST: z.string().default('smtp.ethereal.email'),
   SMTP_PORT: z.string().default('587').transform((val) => parseInt(val, 10)),
   SMTP_USER: z.string().optional(),
@@ -28,6 +31,7 @@ const envSchema = z.object({
 
   // AI Provider (Optional)
   GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default('gemini-3.5-flash'),
   OPENAI_API_KEY: z.string().optional(),
 
   // Code Execution & Compiler Configuration

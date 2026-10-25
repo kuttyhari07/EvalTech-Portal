@@ -96,8 +96,13 @@ export class AIQuestionService {
     marks: number,
     types: string[]
   ): Promise<IGeneratedQuestionItem[]> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${config.GEMINI_API_KEY}`;
-    
+    const candidateModels = [
+      config.GEMINI_MODEL || 'gemini-3.5-flash',
+      'gemini-flash-lite-latest',
+      'gemini-3.1-flash-lite',
+      'gemini-3.5-flash-lite',
+    ];
+
     const prompt = `
       You are an expert exam question author. Generate ${count} high quality examination questions for:
       Subject: ${params.subject}
@@ -123,22 +128,36 @@ export class AIQuestionService {
       Do not include markdown code ticks, output only valid JSON.
     `;
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-      }),
-    });
+    let lastError: Error | null = null;
+    for (const model of candidateModels) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.GEMINI_API_KEY}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+          }),
+        });
 
-    if (!res.ok) {
-      throw new Error(`Gemini API failed with status ${res.status}`);
+        if (!res.ok) {
+          const errData: any = await res.json().catch(() => ({}));
+          console.warn(`[AIService] Gemini model ${model} returned ${res.status}: ${errData?.error?.message || res.statusText}`);
+          continue;
+        }
+
+        const data: any = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) continue;
+        const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        return JSON.parse(cleanJson);
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[AIService] Gemini model ${model} invocation error:`, err.message);
+      }
     }
 
-    const data: any = await res.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(cleanJson);
+    throw lastError || new Error('All Gemini candidate models failed to generate questions');
   }
 
   private static async callOpenAIAPI(
