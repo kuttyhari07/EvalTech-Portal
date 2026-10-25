@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { api } from '../../api/client';
-import { QuestionItem, ClassItem } from '../../types';
+import { QuestionItem, ClassItem, QuestionBankItem } from '../../types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -19,6 +19,14 @@ import {
   Trash2,
   FileQuestion,
   Lock,
+  Folder,
+  BookOpen,
+  Layers,
+  ChevronDown,
+  ChevronUp,
+  Code2,
+  Search,
+  Check,
 } from 'lucide-react';
 
 export const StaffExamBuilder: React.FC = () => {
@@ -50,11 +58,15 @@ export const StaffExamBuilder: React.FC = () => {
   // Selected questions for this exam
   const [examQuestions, setExamQuestions] = useState<{ question: QuestionItem; marks: number }[]>([]);
 
-  // Database resources
+  // Database resources & Question Banks
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [bankQuestions, setBankQuestions] = useState<QuestionItem[]>([]);
+  const [questionBanks, setQuestionBanks] = useState<QuestionBankItem[]>([]);
   const [isQuestionPickerOpen, setIsQuestionPickerOpen] = useState(false);
+  const [pickerTab, setPickerTab] = useState<'banks' | 'individual'>('banks');
+  const [expandedBankId, setExpandedBankId] = useState<string | null>(null);
   const [pickerSearch, setPickerSearch] = useState('');
+  const [bankPickerSearch, setBankPickerSearch] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,11 +77,16 @@ export const StaffExamBuilder: React.FC = () => {
     setStartsAt(now.toISOString().slice(0, 16));
     setEndsAt(future.toISOString().slice(0, 16));
 
-    // Load classes and question bank
-    Promise.all([api.get('/classes'), api.get('/questions')])
-      .then(([clsRes, qRes]) => {
+    // Load classes, question bank, and question banks
+    Promise.all([
+      api.get('/classes'),
+      api.get('/questions'),
+      api.get('/questions/banks'),
+    ])
+      .then(([clsRes, qRes, banksRes]) => {
         setClasses(clsRes.data?.data || []);
         setBankQuestions(qRes.data?.data || []);
+        setQuestionBanks(banksRes.data?.data || []);
       })
       .catch((err) => console.error(err));
 
@@ -118,8 +135,25 @@ export const StaffExamBuilder: React.FC = () => {
 
   const handleAddQuestionFromBank = (q: QuestionItem) => {
     if (!examQuestions.some((item) => item.question._id === q._id)) {
-      setExamQuestions([...examQuestions, { question: q, marks: q.defaultMarks || 1 }]);
+      setExamQuestions([...examQuestions, { question: q, marks: q.defaultMarks || (q.type === 'programming' ? 10 : 1) }]);
     }
+  };
+
+  const handleAddAllQuestionsFromBank = (bank: QuestionBankItem) => {
+    const bankQList: QuestionItem[] = (bank.questionIds || []).filter(
+      (q: any) => typeof q === 'object' && q !== null
+    );
+
+    const updated = [...examQuestions];
+    for (const q of bankQList) {
+      if (!updated.some((item) => item.question._id === q._id)) {
+        updated.push({
+          question: q,
+          marks: q.defaultMarks || (q.type === 'programming' ? 10 : 1),
+        });
+      }
+    }
+    setExamQuestions(updated);
   };
 
   const handleRemoveQuestion = (idx: number) => {
@@ -398,14 +432,31 @@ export const StaffExamBuilder: React.FC = () => {
                         <span className="w-6 h-6 rounded-full bg-pearl-100 text-midnight-700 font-bold text-xs flex items-center justify-center shrink-0">
                           {idx + 1}
                         </span>
-                        <div className="truncate">
-                          <p className="text-xs font-bold text-midnight-900 truncate">
-                            {item.question.title || item.question.text || 'Question'}
-                          </p>
-                          <div className="flex items-center gap-2 text-[10px] text-midnight-600 mt-0.5">
-                            <span className="capitalize">{(item.question.type || 'mcq').replace('_', ' ')}</span>
+                        <div className="truncate min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {item.question.type === 'programming' ? (
+                              <span className="text-[10px] font-bold bg-indigo-50 border border-indigo-200 text-indigo-700 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                <Code2 className="w-3 h-3 text-indigo-600" /> Coding
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold bg-pearl-100 text-midnight-700 px-1.5 py-0.5 rounded uppercase">
+                                {item.question.type || 'mcq'}
+                              </span>
+                            )}
+                            <p className="text-xs font-bold text-midnight-900 truncate">
+                              {item.question.title ? `${item.question.title} - ${item.question.text}` : item.question.text || 'Question'}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 text-[10px] text-midnight-600 mt-1">
+                            <span>{item.question.subject}</span>
                             <span>•</span>
                             <span className="capitalize">{item.question.difficulty || 'medium'}</span>
+                            {item.question.topic && (
+                              <>
+                                <span>•</span>
+                                <span>{item.question.topic}</span>
+                              </>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -596,55 +647,303 @@ export const StaffExamBuilder: React.FC = () => {
       <Modal
         isOpen={isQuestionPickerOpen}
         onClose={() => setIsQuestionPickerOpen(false)}
-        title="Select Questions from Question Bank"
-        size="lg"
+        title="Add Questions to Examination"
+        size="xl"
       >
         <div className="space-y-4">
-          <Input
-            placeholder="Search questions by topic, text..."
-            value={pickerSearch}
-            onChange={(e) => setPickerSearch(e.target.value)}
-          />
+          {/* Tab switcher: By Question Bank vs Individual Questions */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-pearl-200 pb-2">
+            <div className="flex items-center gap-1.5 p-1 bg-pearl-100 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setPickerTab('banks')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  pickerTab === 'banks'
+                    ? 'bg-white text-indigo-brand shadow-subtle'
+                    : 'text-midnight-600 hover:text-midnight-950'
+                }`}
+              >
+                <Folder className="w-3.5 h-3.5" />
+                <span>📁 By Question Bank ({questionBanks.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPickerTab('individual')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  pickerTab === 'individual'
+                    ? 'bg-white text-indigo-brand shadow-subtle'
+                    : 'text-midnight-600 hover:text-midnight-950'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>📋 Individual Questions ({bankQuestions.length})</span>
+              </button>
+            </div>
 
-          <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
-            {bankQuestions
-              .filter((q) => {
-                const searchLower = pickerSearch.toLowerCase();
-                return (
-                  (q.title || '').toLowerCase().includes(searchLower) ||
-                  (q.text || '').toLowerCase().includes(searchLower) ||
-                  (q.subject || '').toLowerCase().includes(searchLower) ||
-                  (q.topic || '').toLowerCase().includes(searchLower)
-                );
-              })
-              .map((q) => {
-                const isAdded = examQuestions.some((item) => item.question._id === q._id);
-                return (
-                  <div
-                    key={q._id}
-                    className="p-3 rounded-lg border border-pearl-200 bg-white flex items-center justify-between gap-3 text-xs"
-                  >
-                    <div className="truncate">
-                      <p className="font-bold text-midnight-900 truncate">{q.title || q.text}</p>
-                      <span className="text-[10px] text-midnight-600 capitalize">
-                        {q.subject} • {(q.type || 'mcq').replace('_', ' ')} • {q.difficulty}
-                      </span>
-                    </div>
-                    <Button
-                      type="button"
-                      variant={isAdded ? 'outline' : 'primary'}
-                      size="sm"
-                      onClick={() => handleAddQuestionFromBank(q)}
-                      disabled={isAdded}
-                    >
-                      {isAdded ? 'Added' : 'Add to Exam'}
-                    </Button>
-                  </div>
-                );
-              })}
+            <div className="text-xs font-bold text-indigo-brand bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 shrink-0">
+              {examQuestions.length} Question{examQuestions.length === 1 ? '' : 's'} in Exam
+            </div>
           </div>
 
-          <div className="flex justify-end pt-2 border-t border-pearl-200">
+          {/* TAB 1: BY QUESTION BANK */}
+          {pickerTab === 'banks' && (
+            <div className="space-y-3">
+              <Input
+                placeholder="Search question banks by title, subject..."
+                value={bankPickerSearch}
+                onChange={(e) => setBankPickerSearch(e.target.value)}
+                leftIcon={<Search className="w-4 h-4" />}
+              />
+
+              {questionBanks.length === 0 ? (
+                <div className="text-center py-8 border-2 border-dashed border-pearl-200 rounded-xl bg-pearl-50">
+                  <BookOpen className="w-8 h-8 text-midnight-400 mx-auto mb-2" />
+                  <p className="text-xs font-bold text-midnight-800">No Question Banks Found</p>
+                  <p className="text-[11px] text-midnight-500 mt-1">
+                    Create question banks under "Question Bank" in the sidebar to organize questions by subject/topic.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[55vh] overflow-y-auto pr-1">
+                  {questionBanks
+                    .filter((b) => {
+                      const s = bankPickerSearch.toLowerCase();
+                      return (
+                        b.title.toLowerCase().includes(s) ||
+                        b.subject.toLowerCase().includes(s) ||
+                        (b.description || '').toLowerCase().includes(s)
+                      );
+                    })
+                    .map((bank) => {
+                      const bankQList: QuestionItem[] = (bank.questionIds || []).filter(
+                        (q: any) => typeof q === 'object' && q !== null
+                      );
+                      const count = bankQList.length;
+                      const alreadyAddedCount = bankQList.filter((q) =>
+                        examQuestions.some((eq) => eq.question._id === q._id)
+                      ).length;
+                      const isAllAdded = count > 0 && alreadyAddedCount === count;
+                      const isExpanded = expandedBankId === bank._id;
+
+                      const mcqCount = bankQList.filter((q) => q.type !== 'programming').length;
+                      const codingCount = bankQList.filter((q) => q.type === 'programming').length;
+
+                      return (
+                        <div
+                          key={bank._id}
+                          className="rounded-xl border border-pearl-200 bg-white hover:border-indigo-brand/30 transition-all overflow-hidden shadow-subtle"
+                        >
+                          <div className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-gradient-to-r from-pearl-50/60 to-white">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="purple" className="text-[10px] font-bold">
+                                  {bank.subject}
+                                </Badge>
+                                <span className="text-xs font-extrabold text-midnight-950">
+                                  {bank.title}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2 text-[11px] text-midnight-600">
+                                <span className="font-semibold text-indigo-brand bg-indigo-50 px-2 py-0.5 rounded">
+                                  {count} Question{count === 1 ? '' : 's'} inside
+                                </span>
+                                {mcqCount > 0 && (
+                                  <span>{mcqCount} MCQ{mcqCount > 1 ? 's' : ''}</span>
+                                )}
+                                {codingCount > 0 && (
+                                  <span className="text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                    <Code2 className="w-3 h-3" /> {codingCount} Coding
+                                  </span>
+                                )}
+                                {alreadyAddedCount > 0 && (
+                                  <span className="text-amber-700 font-bold bg-amber-50 px-1.5 py-0.5 rounded">
+                                    {alreadyAddedCount}/{count} in exam
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setExpandedBankId(isExpanded ? null : bank._id)}
+                                className="px-2.5 py-1.5 text-xs font-bold text-midnight-700 bg-pearl-100 hover:bg-pearl-200 rounded-lg transition-colors flex items-center gap-1"
+                              >
+                                <span>{isExpanded ? 'Hide' : 'View'} ({count})</span>
+                                {isExpanded ? (
+                                  <ChevronUp className="w-3.5 h-3.5" />
+                                ) : (
+                                  <ChevronDown className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+
+                              <Button
+                                type="button"
+                                variant={isAllAdded ? 'outline' : 'electric'}
+                                size="sm"
+                                onClick={() => handleAddAllQuestionsFromBank(bank)}
+                                disabled={count === 0 || isAllAdded}
+                              >
+                                {isAllAdded
+                                  ? 'All Added ✓'
+                                  : alreadyAddedCount > 0
+                                  ? `+ Add Remaining (${count - alreadyAddedCount})`
+                                  : `+ Add All (${count}) to Exam`}
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Expandable Question Details inside this Bank */}
+                          {isExpanded && (
+                            <div className="p-3 border-t border-pearl-200 bg-pearl-50/40 space-y-2">
+                              <div className="text-[11px] font-bold text-midnight-700 px-1 flex items-center justify-between">
+                                <span>Questions in "{bank.title}":</span>
+                                <span className="text-midnight-500 font-normal">
+                                  Click individual questions or use "+ Add All" above.
+                                </span>
+                              </div>
+                              {bankQList.map((q, qIdx) => {
+                                const isAdded = examQuestions.some((item) => item.question._id === q._id);
+                                return (
+                                  <div
+                                    key={q._id}
+                                    className={`p-2.5 rounded-lg border text-xs flex items-center justify-between gap-3 ${
+                                      isAdded
+                                        ? 'bg-emerald-50/50 border-emerald-200'
+                                        : 'bg-white border-pearl-200 hover:border-pearl-300'
+                                    }`}
+                                  >
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="font-mono text-[10px] text-midnight-500">
+                                          #{qIdx + 1}
+                                        </span>
+                                        {q.type === 'programming' ? (
+                                          <span className="text-[10px] font-bold bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                            <Code2 className="w-3 h-3 text-indigo-700" /> Coding
+                                          </span>
+                                        ) : (
+                                          <span className="text-[10px] font-bold bg-pearl-200 text-midnight-800 px-1.5 py-0.5 rounded uppercase">
+                                            {q.type}
+                                          </span>
+                                        )}
+                                        <Badge
+                                          variant={
+                                            q.difficulty === 'easy'
+                                              ? 'success'
+                                              : q.difficulty === 'medium'
+                                              ? 'warning'
+                                              : 'danger'
+                                          }
+                                          className="text-[9px]"
+                                        >
+                                          {q.difficulty}
+                                        </Badge>
+                                        <span className="text-[10px] font-mono font-semibold text-midnight-600">
+                                          {q.defaultMarks || (q.type === 'programming' ? 10 : 1)} Mark(s)
+                                        </span>
+                                      </div>
+                                      <p className="font-bold text-midnight-900 truncate mt-1">
+                                        {q.title ? `${q.title} - ${q.text}` : q.text}
+                                      </p>
+                                    </div>
+
+                                    <Button
+                                      type="button"
+                                      variant={isAdded ? 'outline' : 'primary'}
+                                      size="sm"
+                                      onClick={() => handleAddQuestionFromBank(q)}
+                                      disabled={isAdded}
+                                    >
+                                      {isAdded ? 'Added ✓' : 'Add to Exam'}
+                                    </Button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: INDIVIDUAL QUESTIONS */}
+          {pickerTab === 'individual' && (
+            <div className="space-y-3">
+              <Input
+                placeholder="Search questions by topic, text, subject..."
+                value={pickerSearch}
+                onChange={(e) => setPickerSearch(e.target.value)}
+                leftIcon={<Search className="w-4 h-4" />}
+              />
+
+              <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+                {bankQuestions
+                  .filter((q) => {
+                    const searchLower = pickerSearch.toLowerCase();
+                    return (
+                      (q.title || '').toLowerCase().includes(searchLower) ||
+                      (q.text || '').toLowerCase().includes(searchLower) ||
+                      (q.subject || '').toLowerCase().includes(searchLower) ||
+                      (q.topic || '').toLowerCase().includes(searchLower)
+                    );
+                  })
+                  .map((q) => {
+                    const isAdded = examQuestions.some((item) => item.question._id === q._id);
+                    return (
+                      <div
+                        key={q._id}
+                        className="p-3 rounded-lg border border-pearl-200 bg-white flex items-center justify-between gap-3 text-xs hover:border-pearl-300 transition-colors"
+                      >
+                        <div className="truncate flex-1">
+                          <div className="flex items-center gap-1.5">
+                            {q.type === 'programming' ? (
+                              <span className="text-[10px] font-bold bg-indigo-50 border border-indigo-200 text-indigo-700 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                <Code2 className="w-3 h-3 text-indigo-600" /> Coding
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold bg-pearl-100 text-midnight-700 px-1.5 py-0.5 rounded uppercase">
+                                {q.type || 'mcq'}
+                              </span>
+                            )}
+                            <p className="font-bold text-midnight-900 truncate">
+                              {q.title ? `${q.title} - ${q.text}` : q.text}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[10px] text-midnight-600 capitalize mt-1">
+                            <span>{q.subject}</span>
+                            <span>•</span>
+                            <span>{q.difficulty}</span>
+                            <span>•</span>
+                            <span className="font-bold text-indigo-brand font-mono">
+                              {q.defaultMarks || (q.type === 'programming' ? 10 : 1)} Mark(s)
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant={isAdded ? 'outline' : 'primary'}
+                          size="sm"
+                          onClick={() => handleAddQuestionFromBank(q)}
+                          disabled={isAdded}
+                        >
+                          {isAdded ? 'Added ✓' : 'Add to Exam'}
+                        </Button>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
+          {/* Modal Footer */}
+          <div className="flex items-center justify-between pt-3 border-t border-pearl-200">
+            <span className="text-xs font-semibold text-midnight-600">
+              Total {examQuestions.length} question(s) in this exam ({totalCalculatedMarks} total marks)
+            </span>
             <Button variant="primary" onClick={() => setIsQuestionPickerOpen(false)}>
               Done Adding ({examQuestions.length} Added)
             </Button>
