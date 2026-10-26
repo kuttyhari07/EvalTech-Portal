@@ -36,6 +36,7 @@ interface ProblemStatementPanelProps {
   timeLimitSeconds?: number;
   memoryLimitMb?: number;
   submissions?: any[];
+  onCopyPrevented?: (action: string) => void;
 }
 
 export const ProblemStatementPanel: React.FC<ProblemStatementPanelProps> = ({
@@ -56,6 +57,7 @@ export const ProblemStatementPanel: React.FC<ProblemStatementPanelProps> = ({
   timeLimitSeconds = 2,
   memoryLimitMb = 256,
   submissions = [],
+  onCopyPrevented,
 }) => {
   const [activeTab, setActiveTab] = useState<'problem' | 'samples' | 'history'>('problem');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -159,7 +161,17 @@ export const ProblemStatementPanel: React.FC<ProblemStatementPanelProps> = ({
       </div>
 
       {/* Tab Content Body */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-6 text-midnight-900 dark:text-pearl-100 text-sm leading-relaxed">
+      <div
+        className="flex-1 overflow-y-auto p-5 space-y-6 text-midnight-900 dark:text-pearl-100 text-sm leading-relaxed select-none"
+        onContextMenu={(e) => {
+          e.preventDefault();
+          onCopyPrevented?.('contextmenu');
+        }}
+        onCopy={(e) => {
+          e.preventDefault();
+          onCopyPrevented?.('copy');
+        }}
+      >
         {activeTab === 'problem' && (
           <>
             {/* Problem Statement */}

@@ -30,6 +30,7 @@ export interface IExamAttempt extends Document {
   timeSpentSeconds: number;
   ipAddress?: string;
   userAgent?: string;
+  isSEB?: boolean;
   clientEvents: IClientEvent[];
   programmingDrafts: IProgrammingDraft[];
   submissionToken: string; // Token used to verify idempotent submission
@@ -78,6 +79,7 @@ const examAttemptSchema = new Schema<IExamAttempt>(
     timeSpentSeconds: { type: Number, default: 0 },
     ipAddress: { type: String },
     userAgent: { type: String },
+    isSEB: { type: Boolean, default: false },
     clientEvents: [clientEventSchema],
     programmingDrafts: [programmingDraftSchema],
     submissionToken: { type: String, required: true, unique: true, index: true },

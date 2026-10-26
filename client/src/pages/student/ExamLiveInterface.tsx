@@ -18,12 +18,15 @@ import {
   Bookmark,
   Send,
   ShieldAlert,
+  ShieldCheck,
   Loader2,
   Code2,
   Grid,
   X,
   FileCode,
   Lock,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 
 export const StudentExamLive: React.FC = () => {
@@ -57,7 +60,28 @@ export const StudentExamLive: React.FC = () => {
   const [lastDraftSavedTime, setLastDraftSavedTime] = useState<string>('Draft saved');
   const [mobileTab, setMobileTab] = useState<'problem' | 'code' | 'console'>('code');
 
-  const draftSaveTimeoutRef = useRef<any>(null);
+  const [draftSaveTimeoutRef] = [useRef<any>(null)];
+
+  // Feature 2: Anti-Cheating Dynamic Screen Watermarking state
+  const [watermarkTime, setWatermarkTime] = useState<string>(() => new Date().toLocaleTimeString());
+
+  // Feature 3: Offline Resilience & Wi-Fi Drop Auto-Sync state
+  const [isOffline, setIsOffline] = useState<boolean>(() => !navigator.onLine);
+  const [offlineQueue, setOfflineQueue] = useState<any[]>(() => {
+    const aId = sessionStorage.getItem('evaltech_attempt_id');
+    if (!aId) return [];
+    try {
+      const stored = localStorage.getItem(`evaltech_offline_queue_${aId}`);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
+  const [isSyncingOfflineQueue, setIsSyncingOfflineQueue] = useState<boolean>(false);
+
+  // Feature 4: Question Statement Copy & Right-Click prevention alert
+  const [copyAlert, setCopyAlert] = useState<string | null>(null);
 
   const attemptId = sessionStorage.getItem('evaltech_attempt_id');
   const submissionToken = sessionStorage.getItem('evaltech_submission_token');
@@ -188,9 +212,160 @@ export const StudentExamLive: React.FC = () => {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [attemptId, submissionToken]);
 
-  // Autosave single answer for objective / subjective questions
+  // Dynamic screen watermark time refresher (every 30 seconds)
+  useEffect(() => {
+    const wmInterval = setInterval(() => {
+      setWatermarkTime(new Date().toLocaleTimeString());
+    }, 30000);
+    return () => clearInterval(wmInterval);
+  }, []);
+
+  // Report SEB client environment telemetry on mount
+  useEffect(() => {
+    if (attemptId && submissionToken) {
+      const isSEB =
+        /SEB/i.test(navigator.userAgent) ||
+        /SafeExamBrowser/i.test(navigator.userAgent) ||
+        Boolean((window as any).isSafeExamBrowser);
+
+      if (isSEB) {
+        api
+          .post(`/attempts/${attemptId}/event`, {
+            submissionToken,
+            event: 'seb_detected',
+            isSEB: true,
+            details: 'Safe Exam Browser client verified on live interface mount',
+          })
+          .catch(() => {});
+      }
+    }
+  }, [attemptId, submissionToken]);
+
+  // Offline resilience & localStorage queue management
+  const saveOfflineQueue = (newQueue: any[]) => {
+    setOfflineQueue(newQueue);
+    if (attemptId) {
+      try {
+        localStorage.setItem(`evaltech_offline_queue_${attemptId}`, JSON.stringify(newQueue));
+      } catch (e) {
+        console.error('Failed to save offline queue', e);
+      }
+    }
+  };
+
+  const pushToOfflineQueue = (item: any) => {
+    setOfflineQueue((prev) => {
+      const updated = [...prev, { ...item, timestamp: Date.now() }];
+      if (attemptId) {
+        try {
+          localStorage.setItem(`evaltech_offline_queue_${attemptId}`, JSON.stringify(updated));
+        } catch (e) {
+          console.error('Failed to save offline queue', e);
+        }
+      }
+      return updated;
+    });
+  };
+
+  const flushOfflineQueue = async () => {
+    if (!attemptId || !submissionToken || offlineQueue.length === 0 || isSyncingOfflineQueue) return;
+    setIsSyncingOfflineQueue(true);
+
+    try {
+      const remaining: any[] = [];
+      let syncedCount = 0;
+
+      for (const item of offlineQueue) {
+        try {
+          if (item.type === 'answer') {
+            await api.post(`/attempts/${attemptId}/answer`, {
+              submissionToken,
+              questionId: item.questionId,
+              answerValue: item.answerValue,
+              isMarkedForReview: item.isMarkedForReview,
+            });
+            syncedCount++;
+          } else if (item.type === 'draft') {
+            await api.post(`/code-executions/attempts/${attemptId}/draft-code`, {
+              submissionToken,
+              questionId: item.questionId,
+              language: item.language,
+              sourceCode: item.sourceCode,
+            });
+            syncedCount++;
+          }
+        } catch {
+          remaining.push(item);
+        }
+      }
+
+      saveOfflineQueue(remaining);
+
+      if (syncedCount > 0) {
+        setSyncStatusMsg(`✅ Auto-synced ${syncedCount} buffered offline change(s) to evaluation server!`);
+        setTimeout(() => setSyncStatusMsg(null), 4000);
+        setLastSavedTime(
+          new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        );
+      }
+    } catch (err) {
+      console.error('Error during offline queue sync:', err);
+    } finally {
+      setIsSyncingOfflineQueue(false);
+    }
+  };
+
+  // Online / Offline network event listeners
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false);
+      flushOfflineQueue();
+    };
+    const handleOffline = () => {
+      setIsOffline(true);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [attemptId, submissionToken, offlineQueue, isSyncingOfflineQueue]);
+
+  // Prevent right-click / copying question text & log to proctor telemetry
+  const handlePreventQuestionCopy = (e: React.SyntheticEvent | null, actionType: string) => {
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
+    setCopyAlert('⚠️ Copying or right-clicking question content is disabled for academic integrity.');
+    setTimeout(() => setCopyAlert(null), 4000);
+
+    if (attemptId && submissionToken) {
+      api
+        .post(`/attempts/${attemptId}/event`, {
+          submissionToken,
+          event: 'question_copy_attempt',
+          details: `Question copy/contextmenu prevented (${actionType})`,
+        })
+        .catch(() => {});
+    }
+  };
+
+  // Autosave single answer for objective / subjective questions (with offline buffer)
   const persistAnswer = async (questionId: string, val: any, isMarked: boolean) => {
     if (!attemptId || !submissionToken) return;
+
+    if (!navigator.onLine) {
+      pushToOfflineQueue({
+        type: 'answer',
+        questionId,
+        answerValue: val,
+        isMarkedForReview: isMarked,
+      });
+      setLastSavedTime('Saved locally (Offline)');
+      return;
+    }
 
     setIsAutosaving(true);
     try {
@@ -204,7 +379,14 @@ export const StudentExamLive: React.FC = () => {
         new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
       );
     } catch (err: any) {
-      console.error('Autosave error:', err);
+      console.warn('Network issue saving answer, queuing locally:', err);
+      pushToOfflineQueue({
+        type: 'answer',
+        questionId,
+        answerValue: val,
+        isMarkedForReview: isMarked,
+      });
+      setLastSavedTime('Saved locally (Pending Sync)');
     } finally {
       setIsAutosaving(false);
     }
@@ -257,6 +439,18 @@ export const StudentExamLive: React.FC = () => {
 
     if (!attemptId || !submissionToken) return;
 
+    if (!navigator.onLine) {
+      pushToOfflineQueue({
+        type: 'draft',
+        questionId: qId,
+        language: lang,
+        sourceCode: newCode,
+      });
+      setLastDraftSavedTime('Saved locally (Offline)');
+      setIsDraftSaving(false);
+      return;
+    }
+
     if (draftSaveTimeoutRef.current) {
       clearTimeout(draftSaveTimeoutRef.current);
     }
@@ -274,7 +468,14 @@ export const StudentExamLive: React.FC = () => {
           new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
         );
       } catch (err) {
-        console.error('Draft autosave error:', err);
+        console.warn('Network issue saving draft code, buffering locally:', err);
+        pushToOfflineQueue({
+          type: 'draft',
+          questionId: qId,
+          language: lang,
+          sourceCode: newCode,
+        });
+        setLastDraftSavedTime('Saved locally (Pending Sync)');
       } finally {
         setIsDraftSaving(false);
       }
@@ -458,7 +659,59 @@ export const StudentExamLive: React.FC = () => {
   }).length;
 
   return (
-    <div className="min-h-screen bg-pearl-50 dark:bg-midnight-950 text-midnight-900 dark:text-pearl-100 flex flex-col selection:bg-indigo-brand selection:text-white">
+    <div className="relative min-h-screen bg-pearl-50 dark:bg-midnight-950 text-midnight-900 dark:text-pearl-100 flex flex-col selection:bg-indigo-brand selection:text-white">
+      {/* 🪪 Anti-Cheating Dynamic Screen Watermarking Overlay */}
+      <div
+        className="pointer-events-none select-none fixed inset-0 z-30 overflow-hidden flex flex-wrap items-center justify-around gap-x-20 gap-y-16 p-8 opacity-[0.055] transition-none"
+        aria-hidden="true"
+      >
+        {Array.from({ length: 32 }).map((_, i) => (
+          <div
+            key={i}
+            className="font-mono text-xs sm:text-sm font-black tracking-widest text-midnight-950 dark:text-pearl-100 uppercase -rotate-[28deg] whitespace-nowrap"
+          >
+            {session.student?.name || 'STUDENT'} • {session.student?.rollNo || session.student?.email || 'EVALTECH'} • {session.exam?.examCode || code} • {watermarkTime}
+          </div>
+        ))}
+      </div>
+
+      {/* Offline Wi-Fi Drop Alert Banner */}
+      {isOffline && (
+        <div className="bg-amber-500 text-midnight-950 font-bold px-4 py-2 text-xs flex items-center justify-between shadow-md z-50 sticky top-0">
+          <div className="flex items-center gap-2">
+            <WifiOff className="w-4 h-4 text-midnight-950 animate-bounce" />
+            <span>
+              Network connection interrupted. Answers and drafts are safely buffered in local storage — auto-syncing will resume upon reconnect.
+              {offlineQueue.length > 0 && ` (${offlineQueue.length} pending items)`}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={flushOfflineQueue}
+            disabled={isSyncingOfflineQueue}
+            className="px-2.5 py-1 bg-midnight-950 text-white rounded text-[11px] font-bold hover:bg-midnight-900 transition-colors"
+          >
+            {isSyncingOfflineQueue ? 'Syncing...' : 'Retry Sync'}
+          </button>
+        </div>
+      )}
+
+      {/* Auto-Sync Success Banner */}
+      {syncStatusMsg && (
+        <div className="bg-emerald-600 text-white font-bold px-4 py-1.5 text-xs flex items-center justify-center gap-2 shadow-sm z-50 sticky top-0">
+          <CheckCircle2 className="w-4 h-4" />
+          <span>{syncStatusMsg}</span>
+        </div>
+      )}
+
+      {/* Academic Integrity Copy Prevention Toast */}
+      {copyAlert && (
+        <div className="bg-rose-600 text-white font-bold px-4 py-2 text-xs flex items-center justify-center gap-2 shadow-lg z-50 sticky top-0 animate-fadeIn">
+          <ShieldAlert className="w-4 h-4" />
+          <span>{copyAlert}</span>
+        </div>
+      )}
+
       {/* Anti-tamper Warning Alert */}
       {tamperWarning && (
         <div className="bg-rose-600 text-white px-4 py-2 text-center text-xs font-bold flex items-center justify-center gap-2 animate-fadeIn z-50 sticky top-0">
@@ -657,6 +910,7 @@ export const StudentExamLive: React.FC = () => {
                 timeLimitSeconds={currentQ.programmingDetails?.timeLimitSeconds}
                 memoryLimitMb={currentQ.programmingDetails?.memoryLimitMb}
                 submissions={currentSubmissions}
+                onCopyPrevented={(action) => handlePreventQuestionCopy(null, action)}
               />
             </div>
 
@@ -736,14 +990,22 @@ export const StudentExamLive: React.FC = () => {
                   </button>
                 </div>
 
-                {/* Question Text */}
-                <div className="space-y-3">
-                  <p className="text-base sm:text-lg font-bold text-midnight-950 leading-relaxed">
+                {/* Question Text with Anti-Cheating Copy Prevention */}
+                <div
+                  className="space-y-3 select-none"
+                  onContextMenu={(e) => handlePreventQuestionCopy(e, 'right_click')}
+                  onCopy={(e) => handlePreventQuestionCopy(e, 'copy')}
+                >
+                  <p className="text-base sm:text-lg font-bold text-midnight-950 leading-relaxed select-none">
                     {currentQ.text}
                   </p>
 
                   {currentQ.codeSnippet && (
-                    <pre className="p-4 rounded-xl bg-midnight-950 text-pearl-100 font-mono text-xs overflow-x-auto border border-midnight-800">
+                    <pre
+                      className="p-4 rounded-xl bg-midnight-950 text-pearl-100 font-mono text-xs overflow-x-auto border border-midnight-800 select-none"
+                      onContextMenu={(e) => handlePreventQuestionCopy(e, 'code_snippet_contextmenu')}
+                      onCopy={(e) => handlePreventQuestionCopy(e, 'code_snippet_copy')}
+                    >
                       <code>{currentQ.codeSnippet}</code>
                     </pre>
                   )}

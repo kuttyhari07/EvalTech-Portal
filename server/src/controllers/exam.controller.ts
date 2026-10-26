@@ -235,7 +235,8 @@ export class ExamController {
             exam.title,
             exam.examCode,
             exam.startsAt || new Date(),
-            exam.durationMinutes
+            exam.durationMinutes,
+            Boolean(exam.requireSEB)
           ).catch(console.error);
         }
       }
@@ -375,8 +376,12 @@ export class ExamController {
         recentViolations: violations.slice(-5),
         ipAddress: attempt.ipAddress,
         userAgent: attempt.userAgent,
+        isSEB: Boolean(attempt.isSEB),
       };
     });
+
+    const sebCount = attemptsData.filter((a) => a.isSEB).length;
+    const standardBrowserCount = attemptsData.length - sebCount;
 
     sendSuccess(res, {
       exam: {
@@ -386,12 +391,15 @@ export class ExamController {
         durationMinutes: exam.durationMinutes,
         totalQuestions,
         status: exam.status,
+        requireSEB: Boolean(exam.requireSEB),
       },
       stats: {
         totalAttempts: attempts.length,
         inProgressCount,
         submittedCount,
         flaggedViolationsCount,
+        sebCount,
+        standardBrowserCount,
       },
       liveBroadcasts: exam.liveBroadcasts || [],
       attempts: attemptsData,

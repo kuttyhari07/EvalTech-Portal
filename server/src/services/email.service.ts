@@ -279,10 +279,57 @@ export class EmailService {
     examTitle: string,
     examCode: string,
     startsAt: Date,
-    durationMinutes: number
+    durationMinutes: number,
+    requireSEB = false
   ): Promise<boolean> {
     const examLink = `${config.CLIENT_URL}/exam/${examCode}`;
     const formattedDate = new Date(startsAt).toLocaleString();
+
+    let sebSection = '';
+    if (requireSEB) {
+      // Create SEB protocol launcher link: replace http/https with seb/sebs
+      const sebLaunchUrl = config.CLIENT_URL.startsWith('https')
+        ? config.CLIENT_URL.replace(/^https:/i, 'sebs:') + `/exam/${examCode}`
+        : config.CLIENT_URL.replace(/^http:/i, 'seb:') + `/exam/${examCode}`;
+
+      const sebConfigUrl = `${config.CLIENT_URL}/api/exams/code/${examCode}/seb-config`;
+
+      sebSection = `
+        <div style="background: #111827; border: 1px solid #10B981; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <div style="margin-bottom: 12px;">
+            <strong style="color: #10B981; font-size: 15px;">🛡️ Safe Exam Browser (SEB) Required</strong>
+          </div>
+          <p style="color: #D1D5DB; font-size: 13px; margin: 0 0 16px 0; line-height: 1.5;">
+            This examination is locked to <strong>Safe Exam Browser</strong>. You must attempt the test inside the official SEB environment. Standard desktop or mobile browsers will be blocked.
+          </p>
+
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+            <tr>
+              <td style="padding: 6px 4px 6px 0; width: 50%;">
+                <a href="${sebLaunchUrl}" style="display: block; text-align: center; padding: 12px 14px; background: #059669; color: #FFFFFF !important; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 13px;">
+                  🚀 1-Click Launch in SEB
+                </a>
+              </td>
+              <td style="padding: 6px 0 6px 4px; width: 50%;">
+                <a href="${sebConfigUrl}" style="display: block; text-align: center; padding: 12px 14px; background: #374151; color: #F3F4F6 !important; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 13px; border: 1px solid #4B5563;">
+                  📥 Download .seb Config
+                </a>
+              </td>
+            </tr>
+          </table>
+
+          <div style="background: rgba(255,255,255,0.04); padding: 12px; border-radius: 6px; font-size: 12px; color: #9CA3AF;">
+            <strong style="color: #F3F4F6;">Student Instructions:</strong>
+            <ol style="margin: 6px 0 0 0; padding-left: 20px; line-height: 1.6;">
+              <li>Ensure Safe Exam Browser is installed on your computer (<a href="https://safeexambrowser.org/download_en.html" style="color: #60A5FA; text-decoration: underline;" target="_blank">Download SEB here</a>).</li>
+              <li>Click <strong>1-Click Launch in SEB</strong> above, or download the <code>.seb</code> configuration file and open it.</li>
+              <li>Safe Exam Browser will initialize in secure kiosk mode and open your examination workspace.</li>
+            </ol>
+          </div>
+        </div>
+      `;
+    }
+
     const html = this.wrapTemplate(
       `Upcoming Examination: ${examTitle}`,
       `
@@ -293,10 +340,20 @@ export class EmailService {
           <p style="margin: 4px 0;"><strong>Access Code:</strong> <span style="font-family: monospace; color: #818CF8; font-size: 16px; font-weight: bold;">${examCode}</span></p>
           <p style="margin: 4px 0;"><strong>Scheduled Time:</strong> ${formattedDate}</p>
           <p style="margin: 4px 0;"><strong>Duration:</strong> ${durationMinutes} minutes</p>
+          ${requireSEB ? '<p style="margin: 4px 0; color: #34D399;"><strong>Security:</strong> 🛡️ Safe Exam Browser Enforced</p>' : ''}
         </div>
+
+        ${sebSection}
+
+        ${
+          !requireSEB
+            ? `
         <div style="text-align: center;">
           <a href="${examLink}" class="btn">Access Exam Portal</a>
         </div>
+        `
+            : ''
+        }
       `
     );
     return this.sendMail(email, `Scheduled Exam: ${examTitle} (Code: ${examCode})`, html);

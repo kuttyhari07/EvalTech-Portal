@@ -49,6 +49,15 @@ export class AttemptController {
       return;
     }
 
+    const userAgent = (req.headers['user-agent'] as string) || '';
+    const isSEB = Boolean(
+      userAgent.includes('SEB') ||
+      userAgent.includes('SafeExamBrowser') ||
+      req.headers['x-safeexambrowser-requesthash'] ||
+      req.headers['x-safeexambrowser-configkeyhash'] ||
+      (req.body as any)?.isSEB
+    );
+
     // Check for an existing in-progress attempt
     let attempt = await ExamAttempt.findOne({
       examId: exam._id,
@@ -57,6 +66,11 @@ export class AttemptController {
     });
 
     if (attempt) {
+      if (isSEB && !attempt.isSEB) {
+        attempt.isSEB = true;
+        await attempt.save();
+      }
+
       // Check if server timer expired while user was away
       if (now > attempt.expiresAt) {
         attempt.status = ATTEMPT_STATUS.TIMED_OUT;
@@ -116,6 +130,7 @@ export class AttemptController {
         status: ATTEMPT_STATUS.IN_PROGRESS,
         ipAddress: req.ip || req.headers['x-forwarded-for']?.toString(),
         userAgent: req.headers['user-agent'],
+        isSEB,
         submissionToken,
       });
     }
@@ -324,24 +339,40 @@ export class AttemptController {
 
   static async recordClientEvent(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
-    const { submissionToken, event, details } = req.body;
+    const { submissionToken, event, details, isSEB } = req.body;
 
     if (!submissionToken || !event) {
       sendError(res, 'Invalid event payload', 400);
       return;
     }
 
+    const userAgent = (req.headers['user-agent'] as string) || '';
+    const detectedSEB = Boolean(
+      isSEB ||
+      event === 'seb_detected' ||
+      userAgent.includes('SEB') ||
+      userAgent.includes('SafeExamBrowser') ||
+      req.headers['x-safeexambrowser-requesthash'] ||
+      req.headers['x-safeexambrowser-configkeyhash']
+    );
+
+    const updateOps: any = {
+      $push: {
+        clientEvents: {
+          event,
+          timestamp: new Date(),
+          details,
+        },
+      },
+    };
+
+    if (detectedSEB) {
+      updateOps.$set = { isSEB: true };
+    }
+
     await ExamAttempt.updateOne(
       { _id: id, submissionToken },
-      {
-        $push: {
-          clientEvents: {
-            event,
-            timestamp: new Date(),
-            details,
-          },
-        },
-      }
+      updateOps
     );
 
     sendSuccess(res, { recorded: true });
