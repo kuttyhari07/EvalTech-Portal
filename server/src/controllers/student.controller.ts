@@ -17,6 +17,16 @@ const addStudentSchema = z.object({
   classId: z.string().optional(),
 });
 
+const updateStudentSchema = z.object({
+  firstName: z.string().min(1, 'First name is required').optional(),
+  lastName: z.string().min(1, 'Last name is required').optional(),
+  email: z.string().email('Invalid student email').optional(),
+  studentIdNumber: z.string().min(1, 'Roll or ID number is required').optional(),
+  phone: z.string().optional(),
+  classId: z.string().optional(),
+  resetPasswordToDefault: z.boolean().optional(),
+});
+
 export class StudentController {
   static async addStudent(req: AuthRequest, res: Response): Promise<void> {
     const data = addStudentSchema.parse(req.body);
@@ -282,5 +292,103 @@ export class StudentController {
     await ClassEnrollment.updateMany({ studentId: student._id }, { status: 'dropped' });
 
     sendSuccess(res, null, 'Student archived and capacity slot freed.');
+  }
+
+  static async updateStudent(req: AuthRequest, res: Response): Promise<void> {
+    const { id } = req.params;
+    const data = updateStudentSchema.parse(req.body);
+    const userId = req.user!.userId;
+    const orgId = req.user?.organizationId;
+    const role = req.user!.role;
+
+    const student = await Student.findById(id);
+    if (!student) {
+      sendError(res, 'Student not found.', 404);
+      return;
+    }
+
+    // Permission check
+    if (role !== ROLES.SUPER_ADMIN) {
+      if (orgId && student.organizationId) {
+        if (student.organizationId.toString() !== orgId.toString()) {
+          sendError(res, 'Forbidden: You cannot modify students outside your institution.', 403);
+          return;
+        }
+      } else if (student.createdByStaffId.toString() !== userId) {
+        sendError(res, 'Forbidden: You can only edit students created by you.', 403);
+        return;
+      }
+    }
+
+    // If email is changing, check uniqueness in same scope
+    if (data.email && data.email.toLowerCase().trim() !== student.email.toLowerCase().trim()) {
+      const emailFilter: any = {
+        _id: { $ne: student._id },
+        email: data.email.toLowerCase().trim(),
+        status: 'active',
+      };
+      if (orgId) {
+        emailFilter.organizationId = orgId;
+      } else {
+        emailFilter.createdByStaffId = userId;
+        emailFilter.organizationId = null;
+      }
+
+      const conflict = await Student.findOne(emailFilter);
+      if (conflict) {
+        sendError(res, 'Another active student already exists with this email address.', 400);
+        return;
+      }
+      student.email = data.email.toLowerCase().trim();
+    }
+
+    if (data.firstName !== undefined) student.firstName = data.firstName.trim();
+    if (data.lastName !== undefined) student.lastName = data.lastName.trim();
+    if (data.studentIdNumber !== undefined) student.studentIdNumber = data.studentIdNumber.trim();
+    if (data.phone !== undefined) student.phone = data.phone?.trim() || undefined;
+
+    if (data.resetPasswordToDefault) {
+      student.passwordHash = undefined;
+      student.passwordChanged = false;
+    }
+
+    await student.save();
+
+    // If classId is specified, ensure active enrollment in that class
+    if (data.classId) {
+      await ClassEnrollment.findOneAndUpdate(
+        { classId: data.classId, studentId: student._id },
+        { classId: data.classId, studentId: student._id, status: 'active', enrolledAt: new Date() },
+        { upsert: true }
+      );
+    }
+
+    await recordAuditLog({
+      req,
+      action: 'STUDENT_UPDATE',
+      entity: 'Student',
+      entityId: student._id.toString(),
+      metadata: {
+        studentEmail: student.email,
+        studentIdNumber: student.studentIdNumber,
+        updatedFields: Object.keys(data),
+      },
+    });
+
+    // Populate enrolled classes to return updated student
+    const enrollments = await ClassEnrollment.find({ studentId: student._id, status: 'active' }).populate(
+      'classId',
+      'name code'
+    );
+    const classes = enrollments.map((e) => e.classId).filter(Boolean);
+
+    sendSuccess(
+      res,
+      {
+        ...student.toSafeObject(),
+        classes,
+      },
+      'Student details updated successfully.'
+    );
   }
 }

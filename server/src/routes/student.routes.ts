@@ -10,6 +10,7 @@ router.use(authenticate);
 router.post('/', requireRoles(ROLES.STAFF, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN), StudentController.addStudent);
 router.post('/batch-import', requireRoles(ROLES.STAFF, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN), StudentController.batchImport);
 router.get('/', StudentController.listStudents);
+router.put('/:id', requireRoles(ROLES.STAFF, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN), StudentController.updateStudent);
 router.delete('/:id', requireRoles(ROLES.STAFF, ROLES.ORG_ADMIN, ROLES.SUPER_ADMIN), StudentController.archiveStudent);
 
 export default router;

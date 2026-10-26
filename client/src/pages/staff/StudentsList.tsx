@@ -20,6 +20,8 @@ import {
   Archive,
   FileText,
   Download,
+  Pencil,
+  KeyRound,
 } from 'lucide-react';
 
 export const StaffStudentsList: React.FC = () => {
@@ -35,6 +37,20 @@ export const StaffStudentsList: React.FC = () => {
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
+
+  // Edit Student Modal state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<StudentItem | null>(null);
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editStudentIdNumber, setEditStudentIdNumber] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editClassId, setEditClassId] = useState('');
+  const [resetPassword, setResetPassword] = useState(false);
+  const [editModalError, setEditModalError] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   // Form states
   const [firstName, setFirstName] = useState('');
@@ -186,6 +202,54 @@ export const StaffStudentsList: React.FC = () => {
     }
   };
 
+  const handleOpenEdit = (s: StudentItem) => {
+    setEditingStudent(s);
+    setEditFirstName(s.firstName);
+    setEditLastName(s.lastName);
+    setEditEmail(s.email);
+    setEditStudentIdNumber(s.studentIdNumber);
+    setEditPhone(s.phone || '');
+    setEditClassId(s.classes && s.classes.length > 0 ? s.classes[0]._id : '');
+    setResetPassword(false);
+    setEditModalError(null);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStudent) return;
+
+    setIsUpdating(true);
+    setEditModalError(null);
+
+    try {
+      const res = await api.put(`/students/${editingStudent._id}`, {
+        firstName: editFirstName.trim(),
+        lastName: editLastName.trim(),
+        email: editEmail.toLowerCase().trim(),
+        studentIdNumber: editStudentIdNumber.trim(),
+        phone: editPhone.trim() || undefined,
+        classId: editClassId || undefined,
+        resetPasswordToDefault: resetPassword,
+      });
+
+      const updated = res.data?.data;
+      setStudents((prev) =>
+        prev.map((s) => (s._id === editingStudent._id ? { ...s, ...updated } : s))
+      );
+
+      setIsEditModalOpen(false);
+      setEditingStudent(null);
+      setToastMsg(`Student "${editFirstName} ${editLastName}" updated successfully!`);
+      setTimeout(() => setToastMsg(null), 3500);
+      fetchData();
+    } catch (err: any) {
+      setEditModalError(err.message || 'Failed to update student details.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const filtered = students.filter(
     (s) =>
       s.firstName.toLowerCase().includes(search.toLowerCase()) ||
@@ -227,6 +291,13 @@ export const StaffStudentsList: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {toastMsg && (
+        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 flex items-center gap-2 shadow-xs">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{toastMsg}</span>
+        </div>
+      )}
 
       {/* Live Capacity Quota Card */}
       {capacity && (
@@ -346,13 +417,22 @@ export const StaffStudentsList: React.FC = () => {
                         </div>
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => handleArchive(s._id)}
-                          title="Archive Student"
-                          className="p-1 rounded text-rose-500 hover:bg-rose-50 transition-colors"
-                        >
-                          <Archive className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleOpenEdit(s)}
+                            title="Edit Student Details"
+                            className="p-1.5 rounded-lg text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 border border-transparent hover:border-indigo-200 transition-all"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleArchive(s._id)}
+                            title="Archive Student"
+                            className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all"
+                          >
+                            <Archive className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -444,6 +524,123 @@ export const StaffStudentsList: React.FC = () => {
             </Button>
             <Button type="submit" variant="primary" isLoading={isSubmitting}>
               Add Student
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Student Details Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingStudent(null);
+        }}
+        title={`Edit Student Details • ${editingStudent?.firstName} ${editingStudent?.lastName}`}
+        description="Modify student profile, roll number, email address, or class enrollment."
+      >
+        <form onSubmit={handleUpdateStudent} className="space-y-4">
+          {editModalError && (
+            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 flex items-center gap-2 text-xs font-medium text-rose-700">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{editModalError}</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="First Name"
+              required
+              placeholder="First name"
+              value={editFirstName}
+              onChange={(e) => setEditFirstName(e.target.value)}
+            />
+            <Input
+              label="Last Name"
+              required
+              placeholder="Last name"
+              value={editLastName}
+              onChange={(e) => setEditLastName(e.target.value)}
+            />
+          </div>
+
+          <Input
+            label="Email Address"
+            type="email"
+            required
+            placeholder="student@institution.edu"
+            value={editEmail}
+            onChange={(e) => setEditEmail(e.target.value)}
+          />
+
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Roll / Student ID Number"
+              required
+              placeholder="STU-001"
+              value={editStudentIdNumber}
+              onChange={(e) => setEditStudentIdNumber(e.target.value)}
+            />
+            <Input
+              label="Phone"
+              placeholder="+91..."
+              value={editPhone}
+              onChange={(e) => setEditPhone(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-midnight-700">
+              Enrolled Class Assignment
+            </label>
+            <select
+              value={editClassId}
+              onChange={(e) => setEditClassId(e.target.value)}
+              className="w-full rounded-lg border border-pearl-300 bg-white px-3 py-2.5 text-xs text-midnight-900 focus:border-indigo-brand focus:outline-none"
+            >
+              <option value="">Keep existing enrollments (or None)</option>
+              {classes.map((cls) => (
+                <option key={cls._id} value={cls._id}>
+                  {cls.name} ({cls.code})
+                </option>
+              ))}
+            </select>
+            <span className="text-[11px] text-midnight-500 block">
+              Selecting a class ensures the student is enrolled in that class.
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 space-y-1.5">
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-amber-950">
+              <input
+                type="checkbox"
+                checked={resetPassword}
+                onChange={(e) => setResetPassword(e.target.checked)}
+                className="w-4 h-4 text-indigo-brand rounded border-amber-300 focus:ring-indigo-brand"
+              />
+              <span className="flex items-center gap-1.5">
+                <KeyRound className="w-3.5 h-3.5 text-amber-700" />
+                Reset Student Password to Initial Default
+              </span>
+            </label>
+            <p className="text-[11px] text-amber-800 pl-6 leading-relaxed">
+              If the student forgot their password or cannot log in, enable this to reset their credentials back to <code>Test@123</code>.
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-3 border-t border-pearl-200">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setIsEditModalOpen(false);
+                setEditingStudent(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" isLoading={isUpdating}>
+              Save Changes
             </Button>
           </div>
         </form>
