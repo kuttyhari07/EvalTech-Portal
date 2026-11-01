@@ -263,15 +263,15 @@ export const AIProctorHUD: React.FC<AIProctorHUDProps> = ({
                 className={`font-mono text-[9px] font-bold ${
                   voiceStatus === 'talking'
                     ? 'text-rose-400 animate-pulse'
-                    : audioLevel > 14
-                    ? 'text-amber-300'
+                    : voiceStatus === 'noise' && audioLevel > 25
+                    ? 'text-pearl-400'
                     : 'text-emerald-400'
                 }`}
               >
                 {voiceStatus === 'talking'
-                  ? '🎤 TALKING DETECTED'
-                  : audioLevel > 14
-                  ? '🔊 SOUND DETECTED'
+                  ? '🎤 VOICE DETECTED'
+                  : voiceStatus === 'noise' && audioLevel > 25
+                  ? '🔈 AMBIENT SOUND'
                   : '🟢 SILENT (OK)'}
               </span>
             </div>
@@ -288,7 +288,7 @@ export const AIProctorHUD: React.FC<AIProctorHUDProps> = ({
                       className={`w-1 rounded-xs transition-all duration-75 ${
                         voiceStatus === 'talking'
                           ? 'bg-rose-500'
-                          : audioLevel > 20
+                          : voiceStatus === 'noise' && audioLevel > 30
                           ? 'bg-amber-400'
                           : 'bg-emerald-400'
                       }`}
@@ -304,7 +304,7 @@ export const AIProctorHUD: React.FC<AIProctorHUDProps> = ({
                   className={`h-full transition-all duration-75 rounded-full ${
                     voiceStatus === 'talking'
                       ? 'bg-rose-500'
-                      : audioLevel > 25
+                      : voiceStatus === 'noise' && audioLevel > 30
                       ? 'bg-amber-400'
                       : 'bg-emerald-400'
                   }`}

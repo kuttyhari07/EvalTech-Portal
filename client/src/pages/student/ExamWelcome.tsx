@@ -73,7 +73,11 @@ export const StudentExamWelcome: React.FC = () => {
       }
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: 320, height: 240, facingMode: 'user' },
-        audio: true,
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
       });
       testStreamRef.current = stream;
       setHardwareGranted(true);

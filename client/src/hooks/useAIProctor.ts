@@ -116,7 +116,7 @@ export const useAIProctor = ({
   const voiceTicksRef = useRef(0);
   const lastViolationTimeRef = useRef(0);
   const lastSpeechTimeRef = useRef(0);
-  const ambientNoiseFloorRef = useRef(14);
+  const ambientNoiseFloorRef = useRef(0.008);
   const recentLevelsRef = useRef<number[]>([]);
   const nativeFaceDetectorRef = useRef<any>(null);
   const isStartingRef = useRef(false);
@@ -292,7 +292,7 @@ export const useAIProctor = ({
         },
         audio: {
           echoCancellation: true,
-          noiseSuppression: false,
+          noiseSuppression: true,
           autoGainControl: true,
         },
       });
@@ -349,8 +349,31 @@ export const useAIProctor = ({
           recognition.onresult = (event: any) => {
             const results = event.results;
             for (let i = event.resultIndex; i < results.length; i++) {
-              const transcript = results[i][0]?.transcript?.trim();
-              if (transcript && transcript.length >= 2) {
+              const res = results[i];
+              const transcript = res[0]?.transcript?.trim();
+              const confidence = res[0]?.confidence ?? 1;
+              if (!transcript) continue;
+
+              const cleanText = transcript.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '').trim();
+              const words = cleanText.split(/\s+/).filter(Boolean);
+
+              // 1. Interim updates - show visual feedback without issuing premature strikes
+              if (!res.isFinal) {
+                if (words.length >= 2 || cleanText.length >= 7) {
+                  setVoiceStatus('talking');
+                  lastSpeechTimeRef.current = Date.now();
+                }
+                continue;
+              }
+
+              // 2. Final confirmed speech result
+              // Ignore single-character noise or common filler utterances like "um", "uh", "ah"
+              const fillers = ['um', 'uh', 'ah', 'er', 'mm', 'oh', 'hm'];
+              const isMeaningful =
+                (words.length >= 2 && cleanText.length >= 4) ||
+                (words.length === 1 && cleanText.length >= 3 && !fillers.includes(cleanText.toLowerCase()));
+
+              if (isMeaningful && confidence > 0.35) {
                 setVoiceStatus('talking');
                 lastSpeechTimeRef.current = Date.now();
                 issueViolationStrike(
@@ -422,7 +445,7 @@ export const useAIProctor = ({
     } catch {}
   }, []);
 
-  // 1. DYNAMIC NOISE-FILTERED AUDIO MONITORING (every 100ms)
+  // 1. DYNAMIC NOISE-FILTERED AUDIO & VOICE ACTIVITY DETECTION (every 100ms)
   useEffect(() => {
     if (!isReady) return;
 
@@ -437,66 +460,120 @@ export const useAIProctor = ({
 
       const analyser = analyserRef.current;
       const bufferLength = analyser.frequencyBinCount;
+      const sampleRate = audioContextRef.current?.sampleRate || 48000;
+      const binWidth = sampleRate / analyser.fftSize;
 
-      // 1. Time-Domain Amplitude & Peak Calculation
+      // 1. Time-Domain Amplitude, RMS, & Zero Crossing Rate (ZCR)
       const timeData = new Uint8Array(analyser.fftSize);
       analyser.getByteTimeDomainData(timeData);
 
       let sumSquares = 0;
       let peakDelta = 0;
+      let zeroCrossings = 0;
+      let prevSign = 0;
+
       for (let i = 0; i < timeData.length; i++) {
         const delta = Math.abs(timeData[i] - 128);
         if (delta > peakDelta) peakDelta = delta;
         const val = delta / 128;
         sumSquares += val * val;
+
+        const sign = timeData[i] >= 128 ? 1 : -1;
+        if (i > 0 && sign !== prevSign) {
+          zeroCrossings++;
+        }
+        prevSign = sign;
       }
       const rms = Math.sqrt(sumSquares / timeData.length);
 
-      // 2. Frequency-Domain Vocal Energy Calculation (Voice Bins ~180Hz - 3400Hz)
-      const freqData = new Uint8Array(bufferLength);
-      analyser.getByteFrequencyData(freqData);
-      let voiceFreqSum = 0;
-      const binStart = 2;
-      const binEnd = Math.min(bufferLength - 1, 38);
-      for (let i = binStart; i <= binEnd; i++) {
-        voiceFreqSum += freqData[i];
-      }
-      const avgVoiceFreq = voiceFreqSum / (binEnd - binStart + 1);
-
-      // 3. Composite Real-Time Audio Level (0 to 100)
-      const levelFromRms = Math.min(100, Math.round(rms * 600));
-      const levelFromFreq = Math.min(100, Math.round((avgVoiceFreq / 255) * 100));
-      const currentLevel = Math.max(levelFromRms, levelFromFreq);
+      // 2. Scaled Human Audio Level (0 to 100)
+      // Normal speech RMS: 0.04 - 0.25. Silence/ambient: < 0.012
+      // Using an exponential curve so ambient room noise stays low (0-5%)
+      const normalizedRms = Math.max(0, rms - 0.004);
+      const currentLevel = Math.min(100, Math.round(Math.pow(normalizedRms * 4.2, 0.82) * 100));
       setAudioLevel(currentLevel);
 
-      // 4. Track Ambient Room Noise Floor (auto-calibrates to fan, AC, PC hum)
-      recentLevelsRef.current.push(currentLevel);
-      if (recentLevelsRef.current.length > 15) {
+      // 3. Ambient Room Noise Floor Baseline
+      // Tracks steady room background (fans, AC, PC hum)
+      recentLevelsRef.current.push(rms);
+      if (recentLevelsRef.current.length > 20) {
         recentLevelsRef.current.shift();
       }
-      const minRecent = Math.min(...recentLevelsRef.current);
-      // Steadily adjust noise floor to room baseline
-      ambientNoiseFloorRef.current = ambientNoiseFloorRef.current * 0.96 + minRecent * 0.04;
-      ambientNoiseFloorRef.current = Math.max(6, Math.min(32, ambientNoiseFloorRef.current));
-      const noiseFloor = ambientNoiseFloorRef.current;
+      const minRecentRms = Math.min(...recentLevelsRef.current);
+      ambientNoiseFloorRef.current = ambientNoiseFloorRef.current * 0.96 + minRecentRms * 0.04;
+      ambientNoiseFloorRef.current = Math.max(0.003, Math.min(0.04, ambientNoiseFloorRef.current));
+      const noiseFloorRms = ambientNoiseFloorRef.current;
 
-      // 5. Intelligent Speech Detection (Filters out fans, PC hum, room noise)
-      // Must be significantly above the room baseline AND have speech acoustic characteristics
-      const hasSpeechVolume = currentLevel >= noiseFloor + 18 && currentLevel >= 28;
-      const hasVoiceFormants = avgVoiceFreq >= noiseFloor + 16 && avgVoiceFreq >= 28;
-      const hasAcousticPulse = peakDelta >= 16;
+      // 4. Frequency-Domain Vocal Formant & Energy Analysis
+      const freqData = new Uint8Array(bufferLength);
+      analyser.getByteFrequencyData(freqData);
 
-      const isSpeakingNow = (hasSpeechVolume || hasVoiceFormants) && hasAcousticPulse;
+      // Map frequency bins:
+      // Low rumble: < 180 Hz
+      // Voice band: 200 Hz - 3400 Hz (fundamental F0 + formants F1, F2, F3)
+      // High noise/clicks: > 3800 Hz (keyboard clicks, mouse clicks, air hiss)
+      const lowBinEnd = Math.max(1, Math.floor(180 / binWidth));
+      const voiceBinStart = lowBinEnd + 1;
+      const voiceBinEnd = Math.min(bufferLength - 1, Math.floor(3400 / binWidth));
+      const highBinStart = Math.min(bufferLength - 1, Math.floor(3800 / binWidth));
+
+      let lowEnergy = 0;
+      let voiceEnergy = 0;
+      let highEnergy = 0;
+      let maxVoiceBin = 0;
+      let voiceBinSum = 0;
+      let voiceBinCount = 0;
+
+      for (let i = 0; i < bufferLength; i++) {
+        // Convert byte (0 to 255) to normalized linear power
+        // Ignore baseline quantization floor below 50 (~ -85dB)
+        const p = Math.max(0, (freqData[i] - 50) / 205);
+        const power = p * p;
+
+        if (i <= lowBinEnd) {
+          lowEnergy += power;
+        } else if (i >= voiceBinStart && i <= voiceBinEnd) {
+          voiceEnergy += power;
+          voiceBinSum += freqData[i];
+          voiceBinCount++;
+          if (freqData[i] > maxVoiceBin) {
+            maxVoiceBin = freqData[i];
+          }
+        } else if (i >= highBinStart) {
+          highEnergy += power;
+        }
+      }
+
+      const totalEnergy = lowEnergy + voiceEnergy + highEnergy;
+      const vocalRatio = totalEnergy > 0 ? voiceEnergy / totalEnergy : 0;
+      const avgVoiceBin = voiceBinCount > 0 ? voiceBinSum / voiceBinCount : 0;
+      const voicePeakiness = maxVoiceBin - avgVoiceBin;
+
+      // 5. Accurate Voice Activity Decision (Detect ONLY Human Voice!)
+      // Must satisfy:
+      // a. Time-domain volume significantly above room ambient floor
+      const hasVoiceVolume = rms >= noiseFloorRms * 2.2 && rms >= 0.026;
+      // b. Energy is concentrated in human speech frequencies (not fan rumble or keyboard clicks)
+      const hasVoiceBandRatio = vocalRatio >= 0.48;
+      // c. Vocal formant peakiness (distinguishes harmonic speech from flat white noise / fan)
+      const hasFormantPeaks = voicePeakiness >= 18 && maxVoiceBin >= 95;
+      // d. Realistic speech zero-crossing rate (rejects mechanical clicks and sub-bass rumbles)
+      const hasSpeechZCR = zeroCrossings >= 14 && zeroCrossings <= 165;
+
+      const isSpeakingNow = hasVoiceVolume && hasVoiceBandRatio && hasFormantPeaks && hasSpeechZCR;
 
       if (isSpeakingNow) {
-        // Accumulate 1 tick per 100ms when human voice is active
+        // Increment voice ticks when actual human speech is active
         voiceTicksRef.current = Math.min(30, voiceTicksRef.current + 1);
-        setVoiceStatus('talking');
         lastSpeechTimeRef.current = Date.now();
 
-        // Must sustain talking for ~1.8 seconds (18 ticks at 100ms) to trigger strike
-        // Transient noises (door, fan, mouse click) will NEVER reach 18!
-        if (voiceTicksRef.current >= 18) {
+        // Responsive visual indicator in HUD after ~250ms of sustained speech
+        if (voiceTicksRef.current >= 3) {
+          setVoiceStatus('talking');
+        }
+
+        // Strike penalty after ~1.4s of sustained talking (14 ticks at 100ms)
+        if (voiceTicksRef.current >= 14) {
           issueViolationStrike(
             'voice',
             'Voice / Talking Detected',
@@ -507,8 +584,11 @@ export const useAIProctor = ({
       } else {
         // Decay gently when quiet
         voiceTicksRef.current = Math.max(0, voiceTicksRef.current - 1);
-        if (Date.now() - lastSpeechTimeRef.current > 1200) {
-          setVoiceStatus(currentLevel > noiseFloor + 12 ? 'noise' : 'silent');
+
+        // Transition out of talking after 700ms of silence
+        if (Date.now() - lastSpeechTimeRef.current > 700) {
+          // If non-voice sound is present (e.g. typing or door bump), mark as 'noise' without triggering voice strike
+          setVoiceStatus(currentLevel > 30 ? 'noise' : 'silent');
         }
       }
     }, 100);
