@@ -22,6 +22,11 @@ import {
   Download,
   ExternalLink,
   ShieldCheck,
+  Camera,
+  Mic,
+  ShieldAlert,
+  Eye,
+  Volume2,
 } from 'lucide-react';
 
 export const StudentExamWelcome: React.FC = () => {
@@ -41,6 +46,48 @@ export const StudentExamWelcome: React.FC = () => {
   const [startPassword, setStartPassword] = useState('');
   const [starting, setStarting] = useState(false);
   const [devBypassSEB, setDevBypassSEB] = useState(false);
+
+  // AI Proctor device test state
+  const [testingHardware, setTestingHardware] = useState(false);
+  const [hardwareGranted, setHardwareGranted] = useState(false);
+  const [hardwareError, setHardwareError] = useState<string | null>(null);
+  const [proctorAgreed, setProctorAgreed] = useState(false);
+  const testVideoRef = React.useRef<HTMLVideoElement | null>(null);
+  const testStreamRef = React.useRef<MediaStream | null>(null);
+
+  // Clean up test media stream on unmount
+  useEffect(() => {
+    return () => {
+      if (testStreamRef.current) {
+        testStreamRef.current.getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, []);
+
+  const handleTestHardware = async () => {
+    setTestingHardware(true);
+    setHardwareError(null);
+    try {
+      if (testStreamRef.current) {
+        testStreamRef.current.getTracks().forEach((t) => t.stop());
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 320, height: 240, facingMode: 'user' },
+        audio: true,
+      });
+      testStreamRef.current = stream;
+      setHardwareGranted(true);
+      if (testVideoRef.current) {
+        testVideoRef.current.srcObject = stream;
+        testVideoRef.current.play().catch(() => {});
+      }
+    } catch (err: any) {
+      setHardwareError('Camera or Microphone access was denied. Please allow permissions in your browser.');
+      setHardwareGranted(false);
+    } finally {
+      setTestingHardware(false);
+    }
+  };
 
   // Check if student opened inside Safe Exam Browser
   const isSEBBrowser =
@@ -362,6 +409,83 @@ export const StudentExamWelcome: React.FC = () => {
                     helperText="Your instructor or invigilator has protected this exam with a start password."
                   />
                 )}
+
+                {/* AI Face & Voice Proctoring Notice & Device Check */}
+                <div className="p-4 rounded-xl bg-midnight-950 text-white border border-indigo-500/40 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-indigo-500/20 flex items-center justify-center text-indigo-400">
+                        <Camera className="w-4 h-4" />
+                      </div>
+                      <span className="text-xs font-bold text-white uppercase tracking-wider">
+                        AI Proctoring Active
+                      </span>
+                    </div>
+                    <Badge variant="warning" className="text-[10px]">
+                      3 Strikes Auto-Submit
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-pearl-300">
+                    <div className="flex items-start gap-1.5 p-2 rounded-lg bg-midnight-900 border border-white/5">
+                      <Eye className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
+                      <span><strong>AI Face Tracker:</strong> Stay facing screen. Looking away or leaving triggers strikes.</span>
+                    </div>
+                    <div className="flex items-start gap-1.5 p-2 rounded-lg bg-midnight-900 border border-white/5">
+                      <Volume2 className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
+                      <span><strong>AI Voice Monitor:</strong> Complete silence required. Talking triggers strikes.</span>
+                    </div>
+                  </div>
+
+                  {/* Hardware Check Trigger */}
+                  <div className="pt-1">
+                    {!hardwareGranted ? (
+                      <button
+                        type="button"
+                        onClick={handleTestHardware}
+                        disabled={testingHardware}
+                        className="w-full py-2 px-3 text-xs font-bold rounded-lg bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/40 text-indigo-200 flex items-center justify-center gap-2 transition-all"
+                      >
+                        <Camera className="w-3.5 h-3.5" />
+                        <Mic className="w-3.5 h-3.5" />
+                        <span>{testingHardware ? 'Requesting Camera & Mic...' : 'Test Camera & Microphone Hardware'}</span>
+                      </button>
+                    ) : (
+                      <div className="p-2.5 rounded-lg bg-emerald-950/60 border border-emerald-500/40 flex items-center justify-between text-xs text-emerald-300">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          <span className="font-bold">Hardware Checked (Camera & Mic Ready)</span>
+                        </div>
+                        <video
+                          ref={testVideoRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          className="w-12 h-9 rounded object-cover -scale-x-100 border border-emerald-400"
+                        />
+                      </div>
+                    )}
+
+                    {hardwareError && (
+                      <p className="text-[10px] text-rose-400 font-semibold mt-1">
+                        ⚠️ {hardwareError}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Checkbox Acknowledgment */}
+                  <label className="flex items-start gap-2 pt-1 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={proctorAgreed}
+                      onChange={(e) => setProctorAgreed(e.target.checked)}
+                      className="mt-0.5 rounded border-pearl-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="text-[11px] text-pearl-300 leading-tight">
+                      I understand that AI face and voice monitoring is active. Reaching <strong>3 malpractice warnings</strong> will automatically terminate and submit my examination immediately.
+                    </span>
+                  </label>
+                </div>
 
                 <div className="pt-2">
                   <Button

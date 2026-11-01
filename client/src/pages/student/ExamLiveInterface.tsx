@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../api/client';
 import { Card, CardContent } from '../../components/ui/Card';
@@ -9,6 +9,9 @@ import { CodeEditor } from '../../components/programming/CodeEditor';
 import { ProblemStatementPanel } from '../../components/programming/ProblemStatementPanel';
 import { ExecutionConsole } from '../../components/programming/ExecutionConsole';
 import { ProgrammingLanguage } from '../../types';
+import { useAIProctor } from '../../hooks/useAIProctor';
+import { AIProctorHUD } from '../../components/proctor/AIProctorHUD';
+import { MalpracticeModal } from '../../components/proctor/MalpracticeModal';
 import {
   Clock,
   CheckCircle2,
@@ -85,6 +88,56 @@ export const StudentExamLive: React.FC = () => {
 
   const attemptId = sessionStorage.getItem('evaltech_attempt_id');
   const submissionToken = sessionStorage.getItem('evaltech_submission_token');
+
+  const handleAutoSubmit = useCallback(
+    async (reason?: string) => {
+      if (isSubmitting) return;
+      setIsSubmitting(true);
+      try {
+        const res = await api.post(`/attempts/${attemptId}/submit`, {
+          submissionToken,
+          isAutoSubmit: true,
+          isMalpracticeSubmission: Boolean(
+            reason?.includes('Malpractice') || reason?.includes('warning') || reason?.includes('strike')
+          ),
+          reason: reason || 'time_expired',
+        });
+        sessionStorage.setItem('evaltech_submission_result', JSON.stringify(res.data?.data));
+        navigate(`/exam/${code}/submitted`);
+      } catch {
+        navigate(`/exam/${code}/submitted`);
+      }
+    },
+    [attemptId, submissionToken, code, navigate, isSubmitting]
+  );
+
+  // AI Face & Voice Proctor Hook
+  const {
+    videoRef,
+    bindVideoElement,
+    isReady: isProctorReady,
+    hasPermissions: hasProctorPermissions,
+    permissionError: proctorPermissionError,
+    faceStatus,
+    voiceStatus,
+    faceCount,
+    audioLevel,
+    motionLevel,
+    faceCenter,
+    warningCount: proctorWarningCount,
+    maxStrikes,
+    activeWarning,
+    isSubmittingTerminated,
+    dismissWarning,
+    triggerManualViolation,
+    startProctoring,
+  } = useAIProctor({
+    attemptId,
+    submissionToken,
+    enabled: Boolean(session),
+    maxStrikes: 3,
+    onAutoSubmit: handleAutoSubmit,
+  });
 
   // Load active session from sessionStorage or restore from server
   useEffect(() => {
@@ -196,21 +249,17 @@ export const StudentExamLive: React.FC = () => {
     const handleVisibilityChange = () => {
       if (document.hidden && attemptId && submissionToken) {
         setTamperWarning('Warning: Tab switch or window minimization detected and logged.');
-        api
-          .post(`/attempts/${attemptId}/event`, {
-            submissionToken,
-            event: 'tab_switch',
-            details: 'User navigated away from examination window',
-          })
-          .catch(() => {});
-
-        setTimeout(() => setTamperWarning(null), 5000);
+        triggerManualViolation(
+          'tab_switch',
+          'Tab Switch / Window Unfocused',
+          'Candidate navigated away from the examination window. Window focus lost.'
+        );
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [attemptId, submissionToken]);
+  }, [attemptId, submissionToken, triggerManualViolation]);
 
   // Dynamic screen watermark time refresher (every 30 seconds)
   useEffect(() => {
@@ -584,20 +633,6 @@ export const StudentExamLive: React.FC = () => {
       alert(err.message || 'Submit solution failed');
     } finally {
       setIsSubmittingCode(false);
-    }
-  };
-
-  const handleAutoSubmit = async () => {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-    try {
-      const res = await api.post(`/attempts/${attemptId}/submit`, {
-        submissionToken,
-      });
-      sessionStorage.setItem('evaltech_submission_result', JSON.stringify(res.data?.data));
-      navigate(`/exam/${code}/submitted`);
-    } catch {
-      navigate(`/exam/${code}/submitted`);
     }
   };
 
@@ -1357,6 +1392,33 @@ export const StudentExamLive: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* 📹 AI Face & Voice Proctor Live PIP HUD */}
+      <AIProctorHUD
+        videoRef={videoRef}
+        bindVideoElement={bindVideoElement}
+        isReady={isProctorReady}
+        hasPermissions={hasProctorPermissions}
+        permissionError={proctorPermissionError}
+        faceStatus={faceStatus}
+        voiceStatus={voiceStatus}
+        faceCount={faceCount}
+        audioLevel={audioLevel}
+        motionLevel={motionLevel}
+        faceCenter={faceCenter}
+        warningCount={proctorWarningCount}
+        maxStrikes={maxStrikes}
+        onRetryPermissions={startProctoring}
+      />
+
+      {/* ⚠️ AI Malpractice Warning & Auto-Submit Modal (3 Strikes Rule) */}
+      <MalpracticeModal
+        violation={activeWarning}
+        warningCount={proctorWarningCount}
+        maxStrikes={maxStrikes}
+        isTerminated={isSubmittingTerminated}
+        onDismiss={dismissWarning}
+      />
     </div>
   );
 };

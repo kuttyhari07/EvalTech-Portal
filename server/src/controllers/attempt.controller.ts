@@ -380,7 +380,14 @@ export class AttemptController {
 
   static async submitAttempt(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
-    const { submissionToken, timeSpentSeconds = 0, exitPassword } = req.body;
+    const {
+      submissionToken,
+      timeSpentSeconds = 0,
+      exitPassword,
+      isAutoSubmit = false,
+      isMalpracticeSubmission = false,
+      reason,
+    } = req.body;
 
     const attempt = await ExamAttempt.findOne({ _id: id, submissionToken });
     if (!attempt) {
@@ -388,9 +395,9 @@ export class AttemptController {
       return;
     }
 
-    // Verify exit password if configured on exam
+    // Verify exit password if configured on exam (bypassed if system auto-submits due to malpractice or timeout)
     const exam = await Exam.findById(attempt.examId);
-    if (exam?.exitPassword) {
+    if (exam?.exitPassword && !isAutoSubmit && !isMalpracticeSubmission) {
       if (!exitPassword || exitPassword.trim() !== exam.exitPassword.trim()) {
         sendError(
           res,
@@ -405,6 +412,14 @@ export class AttemptController {
     if (attempt.status === ATTEMPT_STATUS.SUBMITTED || attempt.status === ATTEMPT_STATUS.EVALUATED) {
       sendSuccess(res, { submitted: true, message: 'Exam was already submitted.' });
       return;
+    }
+
+    if (isMalpracticeSubmission || reason?.includes('Malpractice')) {
+      attempt.clientEvents.push({
+        event: 'malpractice_auto_submit',
+        timestamp: new Date(),
+        details: reason || 'Automatic exam termination due to exceeding 3 malpractice strikes',
+      });
     }
 
     attempt.status = ATTEMPT_STATUS.SUBMITTED;

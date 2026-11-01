@@ -344,9 +344,30 @@ export class ExamController {
       if (isActive) inProgressCount++;
       else if (attempt.status === 'submitted' || attempt.status === 'evaluated') submittedCount++;
 
-      // Violations detection
+      // Violations detection (including AI Face & Voice detector events)
       const violations = (attempt.clientEvents || []).filter((e) =>
-        ['tab_blur', 'tab_hidden', 'fullscreen_exit', 'devtools_opened'].includes(e.event)
+        [
+          'tab_blur',
+          'tab_hidden',
+          'tab_switch',
+          'fullscreen_exit',
+          'devtools_opened',
+          'voice_detected',
+          'no_face_detected',
+          'multiple_faces_detected',
+          'face_looking_away',
+          'ai_malpractice_warning',
+          'malpractice_auto_submit',
+          'question_copy_attempt',
+        ].includes(e.event)
+      );
+
+      const aiStrikesCount = (attempt.clientEvents || []).filter((e) =>
+        ['ai_malpractice_warning', 'malpractice_auto_submit'].includes(e.event)
+      ).length;
+
+      const isMalpracticeTerminated = (attempt.clientEvents || []).some(
+        (e) => e.event === 'malpractice_auto_submit'
       );
 
       if (violations.length > 0) flaggedViolationsCount++;
@@ -363,7 +384,13 @@ export class ExamController {
       return {
         id: attempt._id,
         student: attempt.studentInfo,
-        status: isActive ? 'in_progress' : isExpired ? 'timed_out' : attempt.status,
+        status: isMalpracticeTerminated
+          ? 'terminated_malpractice'
+          : isActive
+          ? 'in_progress'
+          : isExpired
+          ? 'timed_out'
+          : attempt.status,
         startedAt: attempt.startedAt,
         expiresAt: attempt.expiresAt,
         submittedAt: attempt.submittedAt,
@@ -373,7 +400,9 @@ export class ExamController {
         totalQuestions,
         progressPercent: totalQuestions > 0 ? Math.min(100, Math.round((answeredCount / totalQuestions) * 100)) : 0,
         violationsCount: violations.length,
-        recentViolations: violations.slice(-5),
+        aiStrikesCount,
+        isMalpracticeTerminated,
+        recentViolations: violations.slice(-8),
         ipAddress: attempt.ipAddress,
         userAgent: attempt.userAgent,
         isSEB: Boolean(attempt.isSEB),

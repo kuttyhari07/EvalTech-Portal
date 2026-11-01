@@ -9,18 +9,27 @@ import { CheckCircle2, Clock, Sparkles, Home, ArrowRight, Power, ShieldCheck } f
 export const StudentExamSubmitted: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const [result, setResult] = useState<any>(null);
+  const [malpracticeStatus, setMalpracticeStatus] = useState<any>(null);
 
   const isSEB =
     typeof navigator !== 'undefined' &&
     (navigator.userAgent.includes('SEB') || navigator.userAgent.includes('SafeExamBrowser'));
 
   useEffect(() => {
-    // Fire festive confetti animation
-    confetti({
-      particleCount: 80,
-      spread: 70,
-      origin: { y: 0.6 },
-    });
+    const malpStored = sessionStorage.getItem('evaltech_malpractice_status');
+    if (malpStored) {
+      try {
+        const parsedM = JSON.parse(malpStored);
+        setMalpracticeStatus(parsedM);
+      } catch {}
+    } else {
+      // Fire festive confetti animation only on normal non-malpractice submissions
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.6 },
+      });
+    }
 
     const stored = sessionStorage.getItem('evaltech_submission_result');
     if (stored) {
@@ -36,17 +45,57 @@ export const StudentExamSubmitted: React.FC = () => {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <Card className="shadow-2xl border-pearl-200 overflow-hidden text-center">
           {/* Header banner */}
-          <div className="bg-gradient-to-r from-emerald-600 to-indigo-brand py-8 text-white px-6">
-            <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center mx-auto mb-3 shadow-inner">
-              <CheckCircle2 className="w-10 h-10 text-white" />
+          {malpracticeStatus?.terminated ? (
+            <div className="bg-gradient-to-r from-rose-700 to-rose-900 py-8 text-white px-6">
+              <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center mx-auto mb-3 shadow-inner">
+                <Power className="w-10 h-10 text-white" />
+              </div>
+              <h2 className="text-xl font-extrabold tracking-tight">Exam Auto-Submitted</h2>
+              <p className="text-xs text-rose-200 mt-1">
+                Terminated automatically: 3 Malpractice Warnings Reached.
+              </p>
             </div>
-            <h2 className="text-xl font-extrabold tracking-tight">Examination Submitted!</h2>
-            <p className="text-xs text-white/80 mt-1">
-              Your responses have been successfully recorded and encrypted.
-            </p>
-          </div>
+          ) : (
+            <div className="bg-gradient-to-r from-emerald-600 to-indigo-brand py-8 text-white px-6">
+              <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center mx-auto mb-3 shadow-inner">
+                <CheckCircle2 className="w-10 h-10 text-white" />
+              </div>
+              <h2 className="text-xl font-extrabold tracking-tight">Examination Submitted!</h2>
+              <p className="text-xs text-white/80 mt-1">
+                Your responses have been successfully recorded and encrypted.
+              </p>
+            </div>
+          )}
 
           <CardContent className="pt-6 pb-8 space-y-6">
+            {/* Malpractice Incident Details if Terminated */}
+            {malpracticeStatus?.terminated && (
+              <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-left space-y-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-rose-900 block">
+                  AI Proctoring Incident Log (3 Strikes)
+                </span>
+                <p className="text-xs text-rose-800 leading-relaxed">
+                  Your session was automatically locked and submitted because the AI Face & Voice detector logged 3 consecutive malpractice infractions.
+                </p>
+                {malpracticeStatus.violations && (
+                  <div className="space-y-1.5 pt-1">
+                    {malpracticeStatus.violations.map((v: any, idx: number) => (
+                      <div
+                        key={idx}
+                        className="text-[10px] p-2 rounded bg-white border border-rose-200 text-rose-900 flex items-center justify-between"
+                      >
+                        <span>
+                          Strike {v.strikeNumber || idx + 1}: <strong>{v.title}</strong>
+                        </span>
+                        <span className="text-rose-500 font-mono text-[9px]">
+                          {new Date(v.timestamp).toLocaleTimeString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             {/* If Results were released immediately */}
             {result ? (
               <div className="space-y-4">

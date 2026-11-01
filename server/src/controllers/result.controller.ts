@@ -235,7 +235,20 @@ export class ResultController {
       const attempt = r.attemptId ? attemptMap.get(r.attemptId.toString()) : null;
       const violationsCount =
         attempt?.clientEvents?.filter((e: any) =>
-          ['tab_blur', 'tab_hidden', 'fullscreen_exit', 'devtools_opened'].includes(e.event)
+          [
+            'tab_blur',
+            'tab_hidden',
+            'tab_switch',
+            'fullscreen_exit',
+            'devtools_opened',
+            'voice_detected',
+            'no_face_detected',
+            'multiple_faces_detected',
+            'face_looking_away',
+            'ai_malpractice_warning',
+            'malpractice_auto_submit',
+            'question_copy_attempt',
+          ].includes(e.event)
         )?.length || 0;
       const timeSpentMin = attempt?.timeSpentSeconds ? (attempt.timeSpentSeconds / 60).toFixed(1) : '0';
       const mcqScore = r.totalScore - (r.programmingScore || 0);
