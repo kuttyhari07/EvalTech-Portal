@@ -138,7 +138,8 @@ export class ResultController {
             programmingScore: r.programmingScore,
             programmingMaxScore: r.programmingMaxScore,
             evaluationStatus: r.evaluationStatus,
-          }
+          },
+          req.get('origin')
         ).catch(console.error);
 
         r.emailSent = true;

@@ -154,9 +154,11 @@ export const StudentResultView: React.FC = () => {
         {/* Top Brand Link */}
         <div className="flex items-center justify-between">
           <Link to="/" className="inline-flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-midnight-900 flex items-center justify-center text-white">
-              <GraduationCap className="w-5 h-5 text-indigo-glow" />
-            </div>
+            <img
+              src="/logo.png"
+              alt="EvalTech"
+              className="w-8 h-8 rounded-full object-cover shadow-sm ring-1 ring-indigo-500/20"
+            />
             <span className="text-xl font-extrabold text-midnight-950">
               Eval<span className="text-indigo-brand">Tech</span>
             </span>

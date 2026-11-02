@@ -434,7 +434,7 @@ export class AuthController {
     user.passwordResetExpires = new Date(Date.now() + 3600000); // 1 hour
     await user.save();
 
-    EmailService.sendPasswordResetEmail(user.email, user.name, resetToken).catch(console.error);
+    EmailService.sendPasswordResetEmail(user.email, user.name, resetToken, req.get('origin')).catch(console.error);
 
     sendSuccess(res, null, 'If that email is registered, password reset instructions have been sent.');
   }

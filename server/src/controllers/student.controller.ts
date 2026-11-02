@@ -92,7 +92,8 @@ export class StudentController {
         `${student.firstName} ${student.lastName}`.trim(),
         student.studentIdNumber,
         'Test@123',
-        inviterName
+        inviterName,
+        req.get('origin')
       ).catch(console.error);
     }
 
@@ -193,7 +194,8 @@ export class StudentController {
         `${newStudent.firstName} ${newStudent.lastName}`.trim(),
         newStudent.studentIdNumber,
         'Test@123',
-        inviterName
+        inviterName,
+        req.get('origin')
       ).catch(console.error);
     }
 

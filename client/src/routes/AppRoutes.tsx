@@ -22,6 +22,7 @@ const LandingPage = React.lazy(() => import('../pages/public/LandingPage').then(
 const Login = React.lazy(() => import('../pages/auth/Login').then(m => ({ default: m.Login })));
 const Register = React.lazy(() => import('../pages/auth/Register').then(m => ({ default: m.Register })));
 const ForgotPassword = React.lazy(() => import('../pages/auth/ForgotPassword').then(m => ({ default: m.ForgotPassword })));
+const ResetPassword = React.lazy(() => import('../pages/auth/ResetPassword').then(m => ({ default: m.ResetPassword })));
 const VerifyEmail = React.lazy(() => import('../pages/auth/VerifyEmail').then(m => ({ default: m.VerifyEmail })));
 const JoinOrg = React.lazy(() => import('../pages/auth/JoinOrg').then(m => ({ default: m.JoinOrg })));
 
@@ -94,6 +95,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/join-org" element={<JoinOrg />} />
 

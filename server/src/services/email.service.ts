@@ -3,14 +3,22 @@ import { config } from '../config/env';
 
 export class EmailService {
   public static getClientUrl(overrideUrl?: string): string {
+    const sanitize = (url: string) => {
+      let trimmed = url.trim().replace(/\/$/, '');
+      if (trimmed.includes('evaltech-portal.vercel.app')) {
+        trimmed = trimmed.replace('evaltech-portal.vercel.app', 'eval-tech-portal.vercel.app');
+      }
+      return trimmed;
+    };
+
     if (overrideUrl && !overrideUrl.includes('localhost') && !overrideUrl.includes('127.0.0.1')) {
-      return overrideUrl.replace(/\/$/, '');
+      return sanitize(overrideUrl);
     }
     const envUrl = config.CLIENT_URL;
     if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
-      return envUrl.replace(/\/$/, '');
+      return sanitize(envUrl);
     }
-    return 'https://evaltech-portal.vercel.app';
+    return 'https://eval-tech-portal.vercel.app';
   }
 
   private static transporter: Transporter | null = null;
@@ -303,11 +311,11 @@ export class EmailService {
     let sebSection = '';
     if (requireSEB) {
       // Create SEB protocol launcher link: replace http/https with seb/sebs
-      const sebLaunchUrl = config.CLIENT_URL.startsWith('https')
-        ? config.CLIENT_URL.replace(/^https:/i, 'sebs:') + `/exam/${examCode}`
-        : config.CLIENT_URL.replace(/^http:/i, 'seb:') + `/exam/${examCode}`;
+      const sebLaunchUrl = clientBase.startsWith('https')
+        ? clientBase.replace(/^https:/i, 'sebs:') + `/api/exams/code/${examCode}/seb-config.seb`
+        : clientBase.replace(/^http:/i, 'seb:') + `/api/exams/code/${examCode}/seb-config.seb`;
 
-      const sebConfigUrl = `${config.CLIENT_URL}/api/exams/code/${examCode}/seb-config`;
+      const sebConfigUrl = `${clientBase}/api/exams/code/${examCode}/seb-config.seb`;
 
       sebSection = `
         <div style="background: #111827; border: 1px solid #10B981; border-radius: 8px; padding: 20px; margin: 20px 0;">
@@ -388,11 +396,12 @@ export class EmailService {
       programmingScore?: number;
       programmingMaxScore?: number;
       evaluationStatus?: string;
-    }
+    },
+    baseUrl?: string
   ): Promise<boolean> {
     const statusColor = isPassed ? '#10B981' : '#EF4444';
     const statusText = isPassed ? 'PASSED' : 'NOT PASSED';
-    const resultLink = `${this.getClientUrl()}/student/results?email=${encodeURIComponent(email)}&examCode=${examCode}`;
+    const resultLink = `${this.getClientUrl(baseUrl)}/student/results?email=${encodeURIComponent(email)}&examCode=${examCode}`;
     const examDateStr = (extraMetrics?.examDate || new Date()).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',

@@ -236,7 +236,8 @@ export class ExamController {
             exam.examCode,
             exam.startsAt || new Date(),
             exam.durationMinutes,
-            Boolean(exam.requireSEB)
+            Boolean(exam.requireSEB),
+            req.get('origin')
           ).catch(console.error);
         }
       }

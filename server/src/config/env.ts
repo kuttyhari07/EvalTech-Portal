@@ -11,11 +11,14 @@ const envSchema = z.object({
   MONGODB_URI: z.string().default('mongodb+srv://evaltech32_db_user:Kuttyharihk%400429@cluster0.dx5zfz0.mongodb.net/evaltech?retryWrites=true&w=majority'),
   JWT_SECRET: z.string().default('evaltech-super-secret-jwt-key-2025-secure-production-ready'),
   JWT_EXPIRES_IN: z.string().default('7d'),
-  CLIENT_URL: z.string().default('https://evaltech-portal.vercel.app').transform((val) => {
+  CLIENT_URL: z.string().default('https://eval-tech-portal.vercel.app').transform((val) => {
     if (process.env.NODE_ENV === 'production' || process.env.RENDER === 'true') {
       if (val.includes('localhost') || val.includes('127.0.0.1')) {
-        return 'https://evaltech-portal.vercel.app';
+        return 'https://eval-tech-portal.vercel.app';
       }
+    }
+    if (val.includes('evaltech-portal.vercel.app')) {
+      return val.replace('evaltech-portal.vercel.app', 'eval-tech-portal.vercel.app');
     }
     return val;
   }),
