@@ -253,3 +253,4 @@ export class DepartmentController {
     sendSuccess(res, null, 'Staff assigned to department classes successfully.');
   }
 }
+

@@ -761,3 +761,4 @@ export const OrgDepartmentClassManagement: React.FC = () => {
     </div>
   );
 };
+
