@@ -138,164 +138,192 @@ export class AIController {
   }
 
   static async createBankWithQuestions(req: AuthRequest, res: Response): Promise<void> {
-    const data = createBankWithQuestionsSchema.parse(req.body);
-    const userId = req.user!.userId;
-    const orgId = req.user?.organizationId;
-
-    let bank: any = null;
-    if (data.existingBankId) {
-      bank = await QuestionBank.findById(data.existingBankId);
-      if (!bank) {
-        sendError(res, 'Target question bank not found.', 404);
+    try {
+      const data = createBankWithQuestionsSchema.parse(req.body);
+      const userId = req.user?.userId;
+      if (!userId) {
+        sendError(res, 'Authentication required to create questions.', 401);
         return;
       }
-    } else {
-      bank = await QuestionBank.create({
-        title: data.bankTitle,
-        subject: data.subject,
-        description: data.description || '',
-        tags: data.tags || [],
-        creatorId: userId,
-        organizationId: orgId,
-        questionIds: [],
-      });
-    }
+      const orgId = req.user?.organizationId;
 
-    const savedQuestionIds: any[] = [];
-    const savedDocs: any[] = [];
-
-    for (const q of data.questions) {
-      if (q.type === 'programming') {
-        // Create base Question entry
-        const baseQ = await Question.create({
-          subject: data.subject,
-          topic: q.topic || data.bankTitle,
-          difficulty: q.difficulty || 'medium',
-          type: 'programming',
-          title: q.title || 'Coding Problem',
-          text: q.problemStatement || q.title || 'Solve the coding problem',
-          defaultMarks: q.defaultMarks || 10,
-          negativeMarks: 0,
-          tags: q.tags || [],
-          options: [],
-          correctAnswers: [],
-          creatorId: userId,
-          organizationId: orgId,
-          questionBankId: bank._id,
-          approvalStatus: 'approved',
-          isApproved: true,
-          aiGenerated: true,
-        });
-
-        // Create detailed ProgrammingQuestion document
-        const progDoc = await ProgrammingQuestion.create({
-          questionId: baseQ._id,
-          creatorId: userId,
-          organizationId: orgId,
-          title: q.title || 'Coding Problem',
-          problemStatement: q.problemStatement || q.title || '',
-          problemDescriptionMarkdown: q.problemDescriptionMarkdown || q.problemStatement || '',
-          inputFormat: q.inputFormat || '',
-          outputFormat: q.outputFormat || '',
-          constraints: q.constraints || '',
-          difficulty: q.difficulty || 'medium',
-          topic: q.topic || data.bankTitle,
-          tags: q.tags || [],
-          supportedLanguages: ['python', 'java', 'cpp', 'c'],
-          starterCode: q.starterCode || {},
-          sampleInput: q.sampleInput || '',
-          sampleExpectedOutput: q.sampleExpectedOutput || '',
-          sampleExplanation: q.sampleExplanation || '',
-          defaultMarks: q.defaultMarks || 10,
-          timeLimitSeconds: q.timeLimitSeconds || 2,
-          memoryLimitMb: q.memoryLimitMb || 256,
-          allowedAttempts: 10,
-          scoringPolicy: 'weighted',
-          status: 'published',
-        });
-
-        // Insert test cases if provided
-        if (Array.isArray(q.testCases) && q.testCases.length > 0) {
-          const testCaseDocs = q.testCases.map((tc: any, idx: number) => ({
-            questionId: baseQ._id,
-            programmingQuestionId: progDoc._id,
-            input: tc.input || '',
-            expectedOutput: tc.expectedOutput || '',
-            isHidden: !!tc.isHidden,
-            isSample: !!tc.isSample,
-            weight: tc.weight || 1,
-            description: tc.description || `Test case ${idx + 1}`,
-            isEnabled: true,
-            order: idx,
-          }));
-          await ProgrammingTestCase.insertMany(testCaseDocs);
+      let bank: any = null;
+      if (data.existingBankId) {
+        bank = await QuestionBank.findById(data.existingBankId);
+        if (!bank) {
+          sendError(res, 'Target question bank not found.', 404);
+          return;
         }
-
-        baseQ.programmingQuestionId = progDoc._id as any;
-        await baseQ.save();
-
-        savedQuestionIds.push(baseQ._id);
-        savedDocs.push(baseQ);
       } else {
-        // Standard MCQ / True False / Short Answer
-        const formattedOptions = Array.isArray(q.options)
-          ? q.options.map((opt: any, idx: number) => ({
-              id: opt.id || String.fromCharCode(65 + idx),
-              text: typeof opt === 'string' ? opt : opt.text || '',
-            }))
-          : [];
-
-        const correctAns = Array.isArray(q.correctAnswers)
-          ? q.correctAnswers
-          : q.correctAnswer
-          ? [q.correctAnswer]
-          : formattedOptions.length > 0
-          ? [formattedOptions[0].id]
-          : [];
-
-        const doc = await Question.create({
+        bank = await QuestionBank.create({
+          title: data.bankTitle,
           subject: data.subject,
-          topic: q.topic || data.bankTitle,
-          difficulty: q.difficulty || 'medium',
-          type: q.type || 'mcq',
-          text: q.text || q.questionText || 'Question',
-          options: formattedOptions,
-          correctAnswers: correctAns,
-          explanation: q.explanation || '',
-          defaultMarks: q.defaultMarks || 1,
-          negativeMarks: q.negativeMarks || 0,
-          tags: q.tags || [],
+          description: data.description || '',
+          tags: data.tags || [],
           creatorId: userId,
           organizationId: orgId,
-          questionBankId: bank._id,
-          approvalStatus: 'approved',
-          isApproved: true,
-          aiGenerated: true,
+          questionIds: [],
         });
-
-        savedQuestionIds.push(doc._id);
-        savedDocs.push(doc);
       }
+
+      const savedQuestionIds: any[] = [];
+      const savedDocs: any[] = [];
+
+      for (const q of data.questions) {
+        const rawDifficulty = String(q.difficulty || 'medium').toLowerCase();
+        const difficulty = ['easy', 'medium', 'hard'].includes(rawDifficulty) ? rawDifficulty : 'medium';
+
+        if (q.type === 'programming') {
+          // Create base Question entry
+          const baseQ = await Question.create({
+            subject: data.subject,
+            topic: q.topic || data.bankTitle,
+            difficulty,
+            type: 'programming',
+            title: q.title || 'Coding Problem',
+            text: q.problemStatement || q.title || 'Solve the coding problem',
+            defaultMarks: Number(q.defaultMarks) || 10,
+            negativeMarks: 0,
+            tags: Array.isArray(q.tags) ? q.tags : [],
+            options: [],
+            correctAnswers: [],
+            creatorId: userId,
+            organizationId: orgId,
+            questionBankId: bank._id,
+            approvalStatus: 'approved',
+            isApproved: true,
+            aiGenerated: true,
+          });
+
+          // Create detailed ProgrammingQuestion document
+          const progDoc = await ProgrammingQuestion.create({
+            questionId: baseQ._id,
+            creatorId: userId,
+            organizationId: orgId,
+            title: q.title || 'Coding Problem',
+            problemStatement: q.problemStatement || q.title || '',
+            problemDescriptionMarkdown: q.problemDescriptionMarkdown || q.problemStatement || '',
+            inputFormat: q.inputFormat || '',
+            outputFormat: q.outputFormat || '',
+            constraints: q.constraints || '',
+            difficulty,
+            topic: q.topic || data.bankTitle,
+            tags: Array.isArray(q.tags) ? q.tags : [],
+            supportedLanguages: ['python', 'java', 'cpp', 'c'],
+            starterCode: typeof q.starterCode === 'object' && q.starterCode !== null ? q.starterCode : {},
+            sampleInput: q.sampleInput || '',
+            sampleExpectedOutput: q.sampleExpectedOutput || '',
+            sampleExplanation: q.sampleExplanation || '',
+            defaultMarks: Number(q.defaultMarks) || 10,
+            timeLimitSeconds: Number(q.timeLimitSeconds) || 2,
+            memoryLimitMb: Number(q.memoryLimitMb) || 256,
+            allowedAttempts: 10,
+            scoringPolicy: 'weighted',
+            status: 'published',
+          });
+
+          // Insert test cases if provided
+          if (Array.isArray(q.testCases) && q.testCases.length > 0) {
+            const testCaseDocs = q.testCases.map((tc: any, idx: number) => ({
+              questionId: baseQ._id,
+              programmingQuestionId: progDoc._id,
+              input: String(tc.input ?? ''),
+              expectedOutput: String(tc.expectedOutput ?? ''),
+              isHidden: !!tc.isHidden,
+              isSample: !!tc.isSample,
+              weight: Number(tc.weight) || 1,
+              description: tc.description || `Test case ${idx + 1}`,
+              isEnabled: true,
+              order: idx,
+            }));
+            await ProgrammingTestCase.insertMany(testCaseDocs);
+          }
+
+          baseQ.programmingQuestionId = progDoc._id as any;
+          await baseQ.save();
+
+          savedQuestionIds.push(baseQ._id);
+          savedDocs.push(baseQ);
+        } else {
+          // Standard MCQ / True False / Short Answer
+          let qType = String(q.type || 'mcq').toLowerCase();
+          if (['multiple-choice', 'single_choice'].includes(qType)) qType = 'mcq';
+          if (!['mcq', 'multiple_select', 'true_false', 'fill_blank', 'short_answer', 'long_answer', 'code', 'programming'].includes(qType)) {
+            qType = 'mcq';
+          }
+
+          const rawOpts = Array.isArray(q.options) ? q.options : [];
+          const formattedOptions = rawOpts.map((opt: any, idx: number) => {
+            const textVal = (typeof opt === 'string' ? opt : opt?.text || '').trim();
+            return {
+              id: opt?.id || String.fromCharCode(65 + idx),
+              text: textVal || `Option ${String.fromCharCode(65 + idx)}`,
+            };
+          });
+
+          if (formattedOptions.length === 0 && qType === 'mcq') {
+            formattedOptions.push(
+              { id: 'A', text: 'True' },
+              { id: 'B', text: 'False' }
+            );
+          }
+
+          let correctAns = Array.isArray(q.correctAnswers)
+            ? q.correctAnswers.filter(Boolean)
+            : q.correctAnswer
+            ? [q.correctAnswer]
+            : [];
+          if (correctAns.length === 0 && formattedOptions.length > 0) {
+            correctAns = [formattedOptions[0].id];
+          }
+
+          const doc = await Question.create({
+            subject: data.subject,
+            topic: q.topic || data.bankTitle,
+            difficulty,
+            type: qType,
+            text: (q.text || q.questionText || q.title || 'Question').trim(),
+            options: formattedOptions,
+            correctAnswers: correctAns,
+            explanation: q.explanation || '',
+            defaultMarks: Number(q.defaultMarks) || 1,
+            negativeMarks: Number(q.negativeMarks) || 0,
+            tags: Array.isArray(q.tags) ? q.tags : [],
+            creatorId: userId,
+            organizationId: orgId,
+            questionBankId: bank._id,
+            approvalStatus: 'approved',
+            isApproved: true,
+            aiGenerated: true,
+          });
+
+          savedQuestionIds.push(doc._id);
+          savedDocs.push(doc);
+        }
+      }
+
+      // Attach all new questions to the QuestionBank
+      if (savedQuestionIds.length > 0) {
+        await QuestionBank.findByIdAndUpdate(bank._id, {
+          $addToSet: { questionIds: { $each: savedQuestionIds } },
+        });
+      }
+
+      const updatedBank = await QuestionBank.findById(bank._id).populate('questionIds');
+
+      sendSuccess(
+        res,
+        {
+          bank: updatedBank,
+          savedCount: savedQuestionIds.length,
+        },
+        `Successfully added ${savedQuestionIds.length} questions to Question Bank "${bank.title}".`,
+        201
+      );
+    } catch (err: any) {
+      console.error('[AI] Error in createBankWithQuestions:', err);
+      sendError(res, err.message || 'Failed to save question bank with questions.', 400);
     }
-
-    // Attach all new questions to the QuestionBank
-    if (savedQuestionIds.length > 0) {
-      await QuestionBank.findByIdAndUpdate(bank._id, {
-        $addToSet: { questionIds: { $each: savedQuestionIds } },
-      });
-    }
-
-    const updatedBank = await QuestionBank.findById(bank._id).populate('questionIds');
-
-    sendSuccess(
-      res,
-      {
-        bank: updatedBank,
-        savedCount: savedQuestionIds.length,
-      },
-      `Successfully added ${savedQuestionIds.length} questions to Question Bank "${bank.title}".`,
-      201
-    );
   }
 
   static async reviewCode(req: AuthRequest, res: Response): Promise<void> {

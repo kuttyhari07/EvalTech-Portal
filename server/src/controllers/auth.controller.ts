@@ -268,7 +268,7 @@ export class AuthController {
     if (req.user.role === ROLES.STUDENT) {
       const student = await Student.findById(req.user.userId);
       if (!student) {
-        sendError(res, 'Student account not found', 404);
+        clearAuthCookie(res); sendSuccess(res, { user: null, organization: null });
         return;
       }
 
@@ -295,7 +295,7 @@ export class AuthController {
 
     const user = await User.findById(req.user.userId);
     if (!user) {
-      sendError(res, 'User not found', 404);
+      clearAuthCookie(res); sendSuccess(res, { user: null, organization: null });
       return;
     }
 

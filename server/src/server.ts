@@ -128,13 +128,19 @@ async function seedSystemDefaults(): Promise<void> {
     }
 
     if (superAdmin) {
-      superAdmin.name = 'Super Admin';
-      superAdmin.email = targetEmail;
-      superAdmin.passwordHash = passwordHash;
-      superAdmin.role = ROLES.SUPER_ADMIN;
-      superAdmin.status = 'active';
-      superAdmin.emailVerified = true;
-      await superAdmin.save();
+      await User.updateOne(
+        { _id: superAdmin._id },
+        {
+          $set: {
+            name: 'Super Admin',
+            email: targetEmail,
+            passwordHash,
+            role: ROLES.SUPER_ADMIN,
+            status: 'active',
+            emailVerified: true,
+          },
+        }
+      );
       console.log('[Seed] Super Admin account updated:', targetEmail);
     } else {
       await User.create({
