@@ -1,5 +1,6 @@
 {
-  "buildCommand": "npm run build --workspace=client",
+  "installCommand": "unset npm_config_cache_dir; npm install",
+  "buildCommand": "unset npm_config_cache_dir; npm run build --workspace=client",
   "outputDirectory": "client/dist",
   "rewrites": [
     {
