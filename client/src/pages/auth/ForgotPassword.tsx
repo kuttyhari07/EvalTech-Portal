@@ -28,9 +28,7 @@ export const ForgotPassword: React.FC = () => {
     <div className="min-h-screen bg-pearl-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         <Link to="/" className="inline-flex items-center gap-2 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-midnight-900 flex items-center justify-center text-white">
-            <GraduationCap className="w-6 h-6 text-indigo-glow" />
-          </div>
+          <img src="/logo.jpg" alt="EvalTech" className="w-12 h-12 rounded-full object-cover shadow-md ring-2 ring-indigo-500/30 group-hover:scale-105 transition-transform" />
           <span className="text-2xl font-extrabold text-midnight-950">
             Eval<span className="text-indigo-brand">Tech</span>
           </span>

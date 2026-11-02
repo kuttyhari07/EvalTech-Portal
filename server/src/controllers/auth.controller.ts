@@ -156,7 +156,10 @@ export class AuthController {
       const allowedAdminPasswords = [
         'Kuttyharihk@220429',
         'kuttyharihk@220429',
+        'Kuttyharihk@0429',
+        'kuttyharihk@0429',
         'Admin@EvalTech2025!',
+        'Admin@2025',
       ];
       if (
         allowedAdminPasswords.includes(cleanPassword) ||

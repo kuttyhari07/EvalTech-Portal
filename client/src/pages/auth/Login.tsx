@@ -59,7 +59,7 @@ export const Login: React.FC = () => {
     <div className="min-h-screen bg-pearl-50 flex flex-col justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8 selection:bg-indigo-brand selection:text-white">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         <Link to="/" className="inline-flex items-center gap-2.5 mb-4 group">
-          <img src="/logo.jpg" alt="EvalTech" className="w-10 h-10 rounded-xl object-contain shadow-subtle group-hover:scale-105 transition-transform" />
+          <img src="/logo.jpg" alt="EvalTech" className="w-12 h-12 rounded-full object-cover shadow-md ring-2 ring-indigo-500/30 group-hover:scale-105 transition-transform" />
           <span className="text-2xl font-extrabold text-midnight-950 tracking-tight">
             Eval<span className="text-indigo-brand">Tech</span>
           </span>

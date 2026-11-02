@@ -7,8 +7,8 @@ import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
 // Instant lightweight Page Loader during code-split chunk load
 const PageLoader: React.FC = () => (
   <div className="min-h-[50vh] flex flex-col items-center justify-center p-8 space-y-4">
-    <div className="w-12 h-12 rounded-xl bg-midnight-950 flex items-center justify-center shadow-subtle border border-midnight-800 animate-pulse">
-      <img src="/logo.jpg" alt="EvalTech" className="w-8 h-8 rounded-lg object-contain" />
+    <div className="w-12 h-12 rounded-full bg-midnight-950 flex items-center justify-center shadow-subtle border border-midnight-800 animate-pulse overflow-hidden">
+      <img src="/logo.jpg" alt="EvalTech" className="w-12 h-12 rounded-full object-cover" />
     </div>
     <div className="space-y-2 w-full max-w-xs">
       <div className="h-3 bg-pearl-200 rounded animate-pulse w-3/4 mx-auto" />
