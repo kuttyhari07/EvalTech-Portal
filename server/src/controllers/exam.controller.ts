@@ -501,11 +501,14 @@ export class ExamController {
   static async downloadSebConfig(req: Request, res: Response): Promise<void> {
     const { id, code } = req.params;
 
+    const cleanCode = code ? String(code).replace(/\.(seb|config)$/i, '').toUpperCase().trim() : undefined;
+    const cleanId = id ? String(id).replace(/\.(seb|config)$/i, '').trim() : undefined;
+
     let exam: any = null;
-    if (code) {
-      exam = await Exam.findOne({ examCode: String(code).toUpperCase().trim() });
-    } else if (id) {
-      exam = await Exam.findById(id);
+    if (cleanCode) {
+      exam = await Exam.findOne({ examCode: cleanCode });
+    } else if (cleanId) {
+      exam = await Exam.findById(cleanId);
     }
 
     if (!exam) {
@@ -513,14 +516,12 @@ export class ExamController {
       return;
     }
 
-    const origin = req.get('origin') || req.get('referer');
-    let clientBaseUrl = EmailService.getClientUrl(req.get('origin') || process.env.CLIENT_URL);
-    if (origin) {
-      try {
-        const parsed = new URL(origin);
-        clientBaseUrl = `${parsed.protocol}//${parsed.host}`;
-      } catch {}
-    }
+    const hostHeader = req.get('x-forwarded-host') || req.get('host');
+    const protoHeader = req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http');
+    let clientBaseUrl =
+      hostHeader && !hostHeader.includes('localhost') && !hostHeader.includes('127.0.0.1')
+        ? `https://${hostHeader}`
+        : EmailService.getClientUrl(req.get('origin') || process.env.CLIENT_URL);
 
     const startUrl = `${clientBaseUrl}/exam/${exam.examCode}`;
     const quitUrl = `${clientBaseUrl}/exam/${exam.examCode}/quit`;
@@ -534,7 +535,7 @@ export class ExamController {
       browserExamKey: exam.sebBrowserExamKey,
     });
 
-    res.setHeader('Content-Type', 'application/seb');
+    res.setHeader('Content-Type', 'application/seb; charset=utf-8');
     res.setHeader(
       'Content-Disposition',
       `attachment; filename="EvalTech-${exam.examCode}-SEB.seb"`

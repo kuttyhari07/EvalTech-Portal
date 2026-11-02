@@ -36,6 +36,12 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 
+// Helper to construct secure SEB protocol launch URL
+const getSebLaunchUrl = (examCode: string) => {
+  const protocol = window.location.protocol === 'https:' ? 'sebs:' : 'seb:';
+  return `${protocol}//${window.location.host}/api/exams/code/${examCode}/seb-config.seb`;
+};
+
 export const StudentDashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -538,7 +544,7 @@ export const StudentDashboard: React.FC = () => {
                               exam.requireSEB && !isSEBBrowser ? (
                                 <div className="space-y-2">
                                   <a
-                                    href={`seb://${window.location.host}/api/exams/code/${exam.examCode}/seb-config`}
+                                    href={getSebLaunchUrl(exam.examCode)}
                                     className="block w-full"
                                   >
                                     <Button
@@ -552,7 +558,7 @@ export const StudentDashboard: React.FC = () => {
                                   </a>
                                   <div className="flex gap-2">
                                     <a
-                                      href={`/api/exams/code/${exam.examCode}/seb-config`}
+                                      href={`/api/exams/code/${exam.examCode}/seb-config.seb`}
                                       download={`EvalTech-${exam.examCode}-SEB.seb`}
                                       className="flex-1"
                                     >
@@ -591,7 +597,7 @@ export const StudentDashboard: React.FC = () => {
                             ) : exam.requireSEB && !isSEBBrowser ? (
                               <div className="space-y-2">
                                 <a
-                                  href={`seb://${window.location.host}/api/exams/code/${exam.examCode}/seb-config`}
+                                  href={getSebLaunchUrl(exam.examCode)}
                                   className="block w-full"
                                 >
                                   <Button
@@ -605,7 +611,7 @@ export const StudentDashboard: React.FC = () => {
                                 </a>
                                 <div className="flex gap-2">
                                   <a
-                                    href={`/api/exams/code/${exam.examCode}/seb-config`}
+                                    href={`/api/exams/code/${exam.examCode}/seb-config.seb`}
                                     download={`EvalTech-${exam.examCode}-SEB.seb`}
                                     className="flex-1"
                                   >
@@ -1110,7 +1116,7 @@ export const StudentDashboard: React.FC = () => {
 
             <div className="space-y-2.5 pt-1">
               <a
-                href={`seb://${window.location.host}/api/exams/code/${selectedExamForSEB.examCode}/seb-config`}
+                href={getSebLaunchUrl(selectedExamForSEB.examCode)}
                 className="block w-full"
               >
                 <Button
@@ -1124,7 +1130,7 @@ export const StudentDashboard: React.FC = () => {
               </a>
 
               <a
-                href={`/api/exams/code/${selectedExamForSEB.examCode}/seb-config`}
+                href={`/api/exams/code/${selectedExamForSEB.examCode}/seb-config.seb`}
                 download={`EvalTech-${selectedExamForSEB.examCode}-SEB.seb`}
                 className="block w-full"
               >

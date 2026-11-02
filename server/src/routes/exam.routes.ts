@@ -8,7 +8,11 @@ const router = Router();
 // Public route for students to view exam summary via code
 router.get('/code/:code', ExamController.getPublicExamByCode);
 router.get('/code/:code/seb-config', ExamController.downloadSebConfig);
+router.get('/code/:code/seb-config.seb', ExamController.downloadSebConfig);
+router.get('/code/:code/config.seb', ExamController.downloadSebConfig);
 router.get('/:id/seb-config', ExamController.downloadSebConfig);
+router.get('/:id/seb-config.seb', ExamController.downloadSebConfig);
+router.get('/:id/config.seb', ExamController.downloadSebConfig);
 
 // Protected routes
 router.use(authenticate);

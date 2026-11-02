@@ -29,6 +29,12 @@ import {
   Volume2,
 } from 'lucide-react';
 
+// Helper to construct secure SEB protocol launch URL
+const getSebLaunchUrl = (examCode: string) => {
+  const protocol = window.location.protocol === 'https:' ? 'sebs:' : 'seb:';
+  return `${protocol}//${window.location.host}/api/exams/code/${examCode}/seb-config.seb`;
+};
+
 export const StudentExamWelcome: React.FC = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
@@ -313,7 +319,7 @@ export const StudentExamWelcome: React.FC = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                       {/* 1-Click Launch Button */}
                       <a
-                        href={`seb://${window.location.host}/api/exams/code/${exam.examCode}/seb-config`}
+                        href={getSebLaunchUrl(exam.examCode)}
                         className="w-full"
                       >
                         <Button
@@ -329,7 +335,7 @@ export const StudentExamWelcome: React.FC = () => {
 
                       {/* Download .seb file button */}
                       <a
-                        href={`/api/exams/code/${exam.examCode}/seb-config`}
+                        href={`/api/exams/code/${exam.examCode}/seb-config.seb`}
                         download={`EvalTech-${exam.examCode}-SEB.seb`}
                         className="w-full"
                       >
