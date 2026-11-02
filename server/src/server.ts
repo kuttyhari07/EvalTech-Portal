@@ -124,25 +124,6 @@ async function seedSystemDefaults(): Promise<void> {
 
     let superAdmin = await User.findOne({ email: targetEmail });
     if (!superAdmin) {
-      superAdmin = await User.findOne({ role: ROLES.SUPER_ADMIN });
-    }
-
-    if (superAdmin) {
-      await User.updateOne(
-        { _id: superAdmin._id },
-        {
-          $set: {
-            name: 'Super Admin',
-            email: targetEmail,
-            passwordHash,
-            role: ROLES.SUPER_ADMIN,
-            status: 'active',
-            emailVerified: true,
-          },
-        }
-      );
-      console.log('[Seed] Super Admin account updated:', targetEmail);
-    } else {
       await User.create({
         name: 'Super Admin',
         email: targetEmail,
@@ -152,6 +133,18 @@ async function seedSystemDefaults(): Promise<void> {
         emailVerified: true,
       });
       console.log('[Seed] Super Admin account created:', targetEmail);
+    } else {
+      await User.updateOne(
+        { _id: superAdmin._id },
+        {
+          $set: {
+            passwordHash,
+            status: 'active',
+            emailVerified: true,
+          },
+        }
+      );
+      console.log('[Seed] Super Admin verified:', targetEmail);
     }
   } catch (err: any) {
     console.error('[Seed] Error seeding system defaults:', err.message);
