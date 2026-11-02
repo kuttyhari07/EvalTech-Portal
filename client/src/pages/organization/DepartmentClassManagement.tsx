@@ -267,6 +267,7 @@ export const OrgDepartmentClassManagement: React.FC = () => {
               setClassSection('');
               setClassDescription('');
               setAssignAllStaff(true);
+              setSelectedStaffIds(staffMembers.map((m) => m.userId?._id).filter(Boolean));
               setIsClassModalOpen(true);
             }}
           >
@@ -634,22 +635,103 @@ export const OrgDepartmentClassManagement: React.FC = () => {
             />
           </div>
 
-          <div className="p-3 bg-indigo-50/70 rounded-lg border border-indigo-200/60 space-y-2">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="assignAllStaffCheck"
-                checked={assignAllStaff}
-                onChange={(e) => setAssignAllStaff(e.target.checked)}
-                className="w-4 h-4 text-indigo-brand rounded border-pearl-300 focus:ring-indigo-brand"
-              />
-              <label htmlFor="assignAllStaffCheck" className="text-xs font-bold text-midnight-900 cursor-pointer">
-                Assign to all organization staff members automatically
-              </label>
+          <div className="space-y-3 pt-1">
+            <div className="p-3 bg-indigo-50/70 rounded-lg border border-indigo-200/60 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="assignAllStaffCheck"
+                    checked={assignAllStaff}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setAssignAllStaff(checked);
+                      if (checked) {
+                        setSelectedStaffIds(staffMembers.map((m) => m.userId?._id).filter(Boolean));
+                      }
+                    }}
+                    className="w-4 h-4 text-indigo-brand rounded border-pearl-300 focus:ring-indigo-brand"
+                  />
+                  <label htmlFor="assignAllStaffCheck" className="text-xs font-bold text-midnight-900 cursor-pointer">
+                    Assign all organization staff ({staffMembers.length})
+                  </label>
+                </div>
+                {!assignAllStaff && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedStaffIds.length === staffMembers.length) {
+                        setSelectedStaffIds([]);
+                      } else {
+                        setSelectedStaffIds(staffMembers.map((m) => m.userId?._id).filter(Boolean));
+                      }
+                    }}
+                    className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800"
+                  >
+                    {selectedStaffIds.length === staffMembers.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                )}
+              </div>
+              <p className="text-[11px] text-midnight-600 pl-6">
+                Teachers assigned here will be able to view this class, add students, and schedule exams.
+              </p>
             </div>
-            <p className="text-[11px] text-midnight-600 pl-6">
-              When checked, all teachers in your organization can view this class, add students, and manage exams.
-            </p>
+
+            {/* Individual staff selection list */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-midnight-700">
+                Assign Staff Instructors ({selectedStaffIds.length} Selected)
+              </label>
+              <div className="max-h-48 overflow-y-auto space-y-1.5 border border-pearl-200 rounded-lg p-2.5 bg-white">
+                {staffMembers.length === 0 ? (
+                  <p className="text-xs text-midnight-500 italic p-2">
+                    No staff members in your roster yet. You can invite staff under "Staff Management".
+                  </p>
+                ) : (
+                  staffMembers.map((m) => {
+                    const u = m.userId;
+                    if (!u) return null;
+                    const isChecked = selectedStaffIds.includes(u._id);
+
+                    return (
+                      <label
+                        key={m._id}
+                        className={`flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs transition-colors ${
+                          isChecked ? 'bg-indigo-50/60 border border-indigo-200/60' : 'hover:bg-pearl-50 border border-transparent'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                const newIds = [...selectedStaffIds, u._id];
+                                setSelectedStaffIds(newIds);
+                                if (newIds.length === staffMembers.length) {
+                                  setAssignAllStaff(true);
+                                }
+                              } else {
+                                setSelectedStaffIds(selectedStaffIds.filter((id) => id !== u._id));
+                                setAssignAllStaff(false);
+                              }
+                            }}
+                            className="w-4 h-4 text-indigo-brand rounded border-pearl-300 focus:ring-indigo-brand"
+                          />
+                          <div>
+                            <p className="font-bold text-midnight-900">{u.name || 'Staff Member'}</p>
+                            <p className="text-[11px] text-midnight-500">{u.email}</p>
+                          </div>
+                        </div>
+                        <Badge variant={m.roleInOrg === 'org_admin' ? 'purple' : 'default'} className="text-[10px]">
+                          {m.roleInOrg === 'org_admin' ? 'Admin' : 'Teacher'}
+                        </Badge>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-3">

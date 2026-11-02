@@ -37,12 +37,12 @@ export class ClassController {
 
     const initialAssignedStaffIds: string[] = [];
     if (targetStaffId) initialAssignedStaffIds.push(targetStaffId.toString());
-    if (data.assignedStaffIds) {
-      initialAssignedStaffIds.push(...data.assignedStaffIds);
-    }
 
-    // If part of an organization, automatically include all org staff members
-    if (orgId) {
+    if (Array.isArray(data.assignedStaffIds) && data.assignedStaffIds.length > 0) {
+      // Explicitly assigned staff members
+      initialAssignedStaffIds.push(...data.assignedStaffIds);
+    } else if (orgId) {
+      // Default: include all active org staff members
       const orgStaffMemberships = await OrganizationMembership.find({
         organizationId: orgId,
         roleInOrg: 'staff',
