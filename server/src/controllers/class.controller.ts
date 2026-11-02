@@ -8,7 +8,7 @@ import { ROLES } from '../constants';
 import { recordAuditLog } from '../utils/audit';
 
 const createClassSchema = z.object({
-  name: z.string().min(2, 'Class name is required'),
+  name: z.string().optional(),
   section: z.string().optional(),
   subject: z.string().optional(),
   academicYear: z.string().optional(),
@@ -57,9 +57,11 @@ export class ClassController {
       (id) => new mongoose.Types.ObjectId(id)
     );
 
+    const className = data.name || data.section || 'Section';
+
     const newClass = await Class.create({
-      name: data.name,
-      section: data.section,
+      name: className,
+      section: data.section || className,
       subject: data.subject,
       academicYear: data.academicYear,
       code,

@@ -202,11 +202,11 @@ export const StaffClassDetail: React.FC = () => {
           </Link>
           <div className="flex items-center gap-2.5">
             <h2 className="text-2xl font-extrabold text-midnight-950 tracking-tight">
-              {classData.name}
+              {classData.section || classData.name}
             </h2>
           </div>
           <p className="text-xs text-midnight-600">
-            {classData.section ? `Section: ${classData.section} • ` : ''}Academic Year: {classData.academicYear}
+            Academic Year: {classData.academicYear}
             {classData.departmentId && typeof classData.departmentId === 'object' && (
               <> • Department: <span className="font-bold text-indigo-700">{classData.departmentId.name} ({classData.departmentId.code})</span></>
             )}

@@ -49,7 +49,6 @@ export const OrgDepartmentClassManagement: React.FC = () => {
 
   // Class Modal
   const [isClassModalOpen, setIsClassModalOpen] = useState(false);
-  const [className, setClassName] = useState('');
   const [classSection, setClassSection] = useState('');
   const [classAcademicYear, setClassAcademicYear] = useState('2025-2026');
   const [classDescription, setClassDescription] = useState('');
@@ -143,7 +142,6 @@ export const OrgDepartmentClassManagement: React.FC = () => {
   // Open Create Class pre-filled with department
   const handleOpenCreateClassForDept = (deptId: string) => {
     setClassDepartmentId(deptId);
-    setClassName('');
     setClassSection('');
     setClassDescription('');
     setAssignAllStaff(true);
@@ -161,7 +159,7 @@ export const OrgDepartmentClassManagement: React.FC = () => {
         : selectedStaffIds;
 
       await api.post('/classes', {
-        name: className,
+        name: classSection,
         section: classSection,
         academicYear: classAcademicYear,
         description: classDescription,
@@ -169,9 +167,8 @@ export const OrgDepartmentClassManagement: React.FC = () => {
         assignedStaffIds: assignedIds,
       });
 
-      showToast('success', `Class "${className}" created successfully.`);
+      showToast('success', `Class "${classSection}" created successfully.`);
       setIsClassModalOpen(false);
-      setClassName('');
       setClassSection('');
       setClassDescription('');
       setClassDepartmentId('');
@@ -267,7 +264,6 @@ export const OrgDepartmentClassManagement: React.FC = () => {
             leftIcon={<Plus className="w-4 h-4" />}
             onClick={() => {
               setClassDepartmentId('');
-              setClassName('');
               setClassSection('');
               setClassDescription('');
               setAssignAllStaff(true);
@@ -495,10 +491,12 @@ export const OrgDepartmentClassManagement: React.FC = () => {
                       </span>
                     </div>
 
-                    <CardTitle className="text-base font-bold text-midnight-950 mt-1">{cls.name}</CardTitle>
-                    {cls.section && (
+                    <CardTitle className="text-base font-bold text-midnight-950 mt-1">
+                      {cls.section || cls.name}
+                    </CardTitle>
+                    {cls.section && cls.name && cls.name !== cls.section && (
                       <CardDescription className="text-xs">
-                        Section: {cls.section}
+                        {cls.name}
                       </CardDescription>
                     )}
                   </CardHeader>
@@ -620,18 +618,11 @@ export const OrgDepartmentClassManagement: React.FC = () => {
             </select>
           </div>
 
-          <Input
-            label="Class Name"
-            required
-            placeholder="e.g. Section A, 2nd Year - Sec A, Class 10"
-            value={className}
-            onChange={(e) => setClassName(e.target.value)}
-          />
-
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label="Section / Cohort (Optional)"
-              placeholder="e.g. Sec A, Year 2"
+              label="Section / Cohort"
+              required
+              placeholder="e.g. Section A, Year 2 - Sec A"
               value={classSection}
               onChange={(e) => setClassSection(e.target.value)}
             />

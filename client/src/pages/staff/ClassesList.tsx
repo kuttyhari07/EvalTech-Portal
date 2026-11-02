@@ -18,7 +18,6 @@ export const StaffClassesList: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // New class form
-  const [name, setName] = useState('');
   const [section, setSection] = useState('');
   const [academicYear, setAcademicYear] = useState('2025-2026');
   const [description, setDescription] = useState('');
@@ -41,14 +40,13 @@ export const StaffClassesList: React.FC = () => {
     setIsSubmitting(true);
     try {
       await api.post('/classes', {
-        name,
+        name: section,
         section,
         academicYear,
         description,
       });
 
       setIsModalOpen(false);
-      setName('');
       setSection('');
       setDescription('');
       fetchClasses();
@@ -123,10 +121,10 @@ export const StaffClassesList: React.FC = () => {
                     <Calendar className="w-3.5 h-3.5" /> {cls.academicYear || '2025-2026'}
                   </span>
                 </div>
-                <CardTitle className="text-base">{cls.name}</CardTitle>
-                {cls.section && (
+                <CardTitle className="text-base">{cls.section || cls.name}</CardTitle>
+                {cls.section && cls.name && cls.name !== cls.section && (
                   <CardDescription>
-                    Section {cls.section}
+                    {cls.name}
                   </CardDescription>
                 )}
               </CardHeader>
@@ -161,18 +159,11 @@ export const StaffClassesList: React.FC = () => {
         description="Fill in class details to initialize your class."
       >
         <form onSubmit={handleCreate} className="space-y-4">
-          <Input
-            label="Class Name"
-            required
-            placeholder="e.g. Section A, 2nd Year - Sec A, Class 10"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Section (Optional)"
-              placeholder="e.g. Section A"
+              label="Section / Cohort"
+              required
+              placeholder="e.g. Section A, Year 2 - Sec A"
               value={section}
               onChange={(e) => setSection(e.target.value)}
             />
