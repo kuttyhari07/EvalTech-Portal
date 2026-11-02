@@ -21,10 +21,6 @@
   "overrides": {
     "monaco-editor": {
       "dompurify": "3.4.17"
-    },
-    "glob": {
-      "minimatch": "^11.0.4"
-    },
-    "deepmerge": "^4.3.1"
+    }
   }
 }
