@@ -514,7 +514,7 @@ export class ExamController {
     }
 
     const origin = req.get('origin') || req.get('referer');
-    let clientBaseUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    let clientBaseUrl = EmailService.getClientUrl(req.get('origin') || process.env.CLIENT_URL);
     if (origin) {
       try {
         const parsed = new URL(origin);

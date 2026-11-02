@@ -1,3 +1,5 @@
+import path from 'path';
+import fs from 'fs';
 import express from 'express';
 import 'express-async-errors';
 import cors from 'cors';
@@ -102,6 +104,17 @@ app.use('/api/student-portal', studentPortalRoutes);
 app.use('/api/practice', practiceRoutes);
 
 // Centralized Error Handling
+
+// Serve static client assets if built (enables full SPA hosting on Render)
+const clientDistPath = path.resolve(__dirname, '../../client/dist');
+if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(clientDistPath, 'index.html'));
+  });
+}
+
 app.use(errorHandler);
 
 /**

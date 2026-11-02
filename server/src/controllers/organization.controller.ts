@@ -137,7 +137,8 @@ export class OrganizationController {
       user.email,
       org.name,
       req.user?.email || 'Administrator',
-      invitationToken
+      invitationToken,
+      req.get('origin')
     ).catch(console.error);
 
     await recordAuditLog({

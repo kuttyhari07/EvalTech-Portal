@@ -92,7 +92,7 @@ export class AuthController {
     }
 
     // Send verification email in background
-    EmailService.sendVerificationEmail(user.email, user.name, verificationToken).catch(console.error);
+    EmailService.sendVerificationEmail(user.email, user.name, verificationToken, req.get('origin')).catch(console.error);
 
     // Generate JWT and set secure cookie
     const token = generateToken({

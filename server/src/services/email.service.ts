@@ -2,6 +2,17 @@ import nodemailer, { Transporter } from 'nodemailer';
 import { config } from '../config/env';
 
 export class EmailService {
+  public static getClientUrl(overrideUrl?: string): string {
+    if (overrideUrl && !overrideUrl.includes('localhost') && !overrideUrl.includes('127.0.0.1')) {
+      return overrideUrl.replace(/\/$/, '');
+    }
+    const envUrl = config.CLIENT_URL;
+    if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+      return envUrl.replace(/\/$/, '');
+    }
+    return 'https://evaltech-portal.vercel.app';
+  }
+
   private static transporter: Transporter | null = null;
 
   private static getTransporter(): Transporter {
@@ -177,8 +188,8 @@ export class EmailService {
     return false;
   }
 
-  static async sendVerificationEmail(email: string, name: string, token: string): Promise<boolean> {
-    const link = `${config.CLIENT_URL}/verify-email?token=${token}&email=${encodeURIComponent(email)}`;
+  static async sendVerificationEmail(email: string, name: string, token: string, baseUrl?: string): Promise<boolean> {
+    const link = `${this.getClientUrl(baseUrl)}/verify-email?token=${token}&email=${encodeURIComponent(email)}`;
     const html = this.wrapTemplate(
       'Verify Your EvalTech Account',
       `
@@ -193,8 +204,8 @@ export class EmailService {
     return this.sendMail(email, 'Verify your EvalTech Account', html);
   }
 
-  static async sendPasswordResetEmail(email: string, name: string, token: string): Promise<boolean> {
-    const link = `${config.CLIENT_URL}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
+  static async sendPasswordResetEmail(email: string, name: string, token: string, baseUrl?: string): Promise<boolean> {
+    const link = `${this.getClientUrl(baseUrl)}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
     const html = this.wrapTemplate(
       'Reset Your EvalTech Password',
       `
@@ -213,9 +224,10 @@ export class EmailService {
     email: string,
     orgName: string,
     inviterName: string,
-    token: string
+    token: string,
+    baseUrl?: string
   ): Promise<boolean> {
-    const link = `${config.CLIENT_URL}/join-org?token=${token}&email=${encodeURIComponent(email)}`;
+    const link = `${this.getClientUrl(baseUrl)}/join-org?token=${token}&email=${encodeURIComponent(email)}`;
     const html = this.wrapTemplate(
       `Invitation to Join ${orgName}`,
       `
@@ -235,9 +247,10 @@ export class EmailService {
     studentName: string,
     rollNumber: string,
     tempPassword = 'Test@123',
-    staffOrOrgName?: string
+    staffOrOrgName?: string,
+    baseUrl?: string
   ): Promise<boolean> {
-    const loginLink = `${config.CLIENT_URL}/student/login`;
+    const loginLink = `${this.getClientUrl(baseUrl)}/login`;
     const html = this.wrapTemplate(
       'Welcome to EvalTech Examination Portal',
       `
@@ -280,9 +293,11 @@ export class EmailService {
     examCode: string,
     startsAt: Date,
     durationMinutes: number,
-    requireSEB = false
+    requireSEB = false,
+    baseUrl?: string
   ): Promise<boolean> {
-    const examLink = `${config.CLIENT_URL}/exam/${examCode}`;
+    const clientBase = this.getClientUrl(baseUrl);
+    const examLink = `${clientBase}/exam/${examCode}`;
     const formattedDate = new Date(startsAt).toLocaleString();
 
     let sebSection = '';
@@ -377,7 +392,7 @@ export class EmailService {
   ): Promise<boolean> {
     const statusColor = isPassed ? '#10B981' : '#EF4444';
     const statusText = isPassed ? 'PASSED' : 'NOT PASSED';
-    const resultLink = `${config.CLIENT_URL}/student/results?email=${encodeURIComponent(email)}&examCode=${examCode}`;
+    const resultLink = `${this.getClientUrl()}/student/results?email=${encodeURIComponent(email)}&examCode=${examCode}`;
     const examDateStr = (extraMetrics?.examDate || new Date()).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
