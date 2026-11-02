@@ -10,7 +10,7 @@ export const Footer: React.FC = () => {
           {/* Brand Info */}
           <div className="space-y-4 md:col-span-1">
             <div className="flex items-center gap-2.5">
-              <img src="/logo.jpg" alt="EvalTech" className="w-9 h-9 rounded-full object-cover shadow-sm ring-1 ring-white/20 bg-midnight-900 border border-midnight-800" />
+              <img src="/logo.png" alt="EvalTech" className="w-10 h-10 rounded-full object-cover shadow-sm ring-1 ring-white/20 bg-midnight-900 border border-midnight-800" />
               <span className="text-xl font-extrabold text-white tracking-tight">
                 Eval<span className="text-indigo-glow">Tech</span>
               </span>

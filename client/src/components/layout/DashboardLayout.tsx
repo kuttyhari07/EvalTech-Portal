@@ -105,7 +105,7 @@ export const DashboardLayout: React.FC = () => {
       {/* Mobile Top Header */}
       <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-midnight-950 text-white border-b border-midnight-800">
         <div className="flex items-center gap-2">
-          <img src="/logo.jpg" alt="EvalTech" className="w-8 h-8 rounded-full object-cover shadow-sm ring-1 ring-white/20" />
+          <img src="/logo.png" alt="EvalTech" className="w-8 h-8 rounded-full object-cover shadow-sm ring-1 ring-white/20" />
           <span className="text-lg font-bold">
             Eval<span className="text-indigo-glow">Tech</span>
           </span>
@@ -135,7 +135,7 @@ export const DashboardLayout: React.FC = () => {
         <div className="p-5 flex flex-col flex-1 overflow-y-auto">
           {/* Brand */}
           <div className="hidden lg:flex items-center gap-2.5 pb-6 border-b border-midnight-850">
-            <img src="/logo.jpg" alt="EvalTech" className="w-10 h-10 rounded-full object-cover shadow-sm ring-2 ring-indigo-500/30 bg-midnight-900 border border-midnight-800" />
+            <img src="/logo.png" alt="EvalTech" className="w-11 h-11 rounded-full object-cover shadow-sm ring-2 ring-indigo-500/30 bg-midnight-900 border border-midnight-800" />
             <div>
               <span className="text-xl font-extrabold tracking-tight text-white block">
                 Eval<span className="text-indigo-glow">Tech</span>
