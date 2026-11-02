@@ -58,10 +58,8 @@ export const Login: React.FC = () => {
   return (
     <div className="min-h-screen bg-pearl-50 flex flex-col justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8 selection:bg-indigo-brand selection:text-white">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <Link to="/" className="inline-flex items-center gap-2 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-midnight-900 flex items-center justify-center text-white shadow-subtle">
-            <GraduationCap className="w-6 h-6 text-indigo-glow" />
-          </div>
+        <Link to="/" className="inline-flex items-center gap-2.5 mb-4 group">
+          <img src="/logo.jpg" alt="EvalTech" className="w-10 h-10 rounded-xl object-contain shadow-subtle group-hover:scale-105 transition-transform" />
           <span className="text-2xl font-extrabold text-midnight-950 tracking-tight">
             Eval<span className="text-indigo-brand">Tech</span>
           </span>

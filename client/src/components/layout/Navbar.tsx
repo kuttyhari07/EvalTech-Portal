@@ -22,9 +22,11 @@ export const Navbar: React.FC = () => {
         <div className="flex items-center justify-between h-16">
           {/* Brand Logo */}
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-midnight-900 to-indigo-brand flex items-center justify-center text-white shadow-subtle group-hover:scale-105 transition-transform">
-              <GraduationCap className="w-5 h-5 text-indigo-glow" />
-            </div>
+            <img
+              src="/logo.jpg"
+              alt="EvalTech"
+              className="w-9 h-9 rounded-xl object-contain shadow-subtle group-hover:scale-105 transition-transform"
+            />
             <span className="text-xl font-extrabold tracking-tight text-midnight-900">
               Eval<span className="text-indigo-brand">Tech</span>
             </span>

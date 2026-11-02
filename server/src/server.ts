@@ -170,6 +170,17 @@ if (process.env.NODE_ENV !== 'test') {
       await seedSystemDefaults();
       app.listen(config.PORT, () => {
         console.log(`[EvalTech API] Server listening on port ${config.PORT} [${config.NODE_ENV}]`);
+      // Render Free-tier keep-alive heartbeat to prevent 60-second cold starts
+      const renderUrl = process.env.RENDER_EXTERNAL_URL || 'https://evaltech-portal.onrender.com';
+      const keepAliveInterval = 10 * 60 * 1000; // 10 minutes
+      setInterval(() => {
+        fetch(`${renderUrl}/api/health`)
+          .then((r) => {
+            if (r.ok) console.log('[KeepAlive] Warmup heartbeat successful');
+          })
+          .catch(() => {});
+      }, keepAliveInterval);
+
       });
     })
     .catch((err) => {

@@ -49,7 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('evaltech_auth_token', res.data.data.token);
       }
       setUser(res.data.data.user);
-      await refreshUser();
+      setOrganization(res.data.data.organization || null);
     }
   };
 
@@ -60,7 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('evaltech_auth_token', res.data.data.token);
       }
       setUser(res.data.data.user);
-      await refreshUser();
+      setOrganization(null);
     }
   };
 
@@ -71,7 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('evaltech_auth_token', res.data.data.token);
       }
       setUser(res.data.data.user);
-      await refreshUser();
+      setOrganization(res.data.data.organization || null);
     }
   };
 
