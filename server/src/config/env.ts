@@ -6,12 +6,12 @@ import { z } from 'zod';
 dotenv.config();
 
 const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('production'),
   PORT: z.string().default('5000').transform((val) => parseInt(val, 10)),
-  MONGODB_URI: z.string().default('mongodb://127.0.0.1:27017/evaltech'),
-  JWT_SECRET: z.string().default('evaltech-super-secret-jwt-key-change-in-production-2025'),
+  MONGODB_URI: z.string().default('mongodb+srv://evaltech32_db_user:Kuttyharihk%400429@cluster0.dx5zfz0.mongodb.net/evaltech?retryWrites=true&w=majority'),
+  JWT_SECRET: z.string().default('evaltech-super-secret-jwt-key-2025-secure-production-ready'),
   JWT_EXPIRES_IN: z.string().default('7d'),
-  CLIENT_URL: z.string().default('http://localhost:5173'),
+  CLIENT_URL: z.string().default('https://evaltech-portal.vercel.app'),
   COOKIE_DOMAIN: z.string().optional(),
   
   // Payment

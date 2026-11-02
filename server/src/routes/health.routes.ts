@@ -12,6 +12,8 @@ router.get('/', (req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
     services: {
       database: isDbConnected ? 'connected' : 'disconnected',
+      dbHost: mongoose.connection.host || 'Atlas',
+      dbName: mongoose.connection.name || 'evaltech',
       api: 'operational',
     },
     version: '1.0.0',
