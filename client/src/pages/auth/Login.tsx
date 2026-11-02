@@ -216,38 +216,6 @@ export const Login: React.FC = () => {
               </Button>
             </form>
 
-            {/* Quick Demo Logins Helper */}
-            <div className="mt-6 pt-4 border-t border-pearl-100 space-y-2">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-midnight-600 text-center">
-                Demo Accounts
-              </p>
-              <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActivePortal('staff');
-                    setEmail('teacher@evaltech.io');
-                    setPassword('Teacher@2025');
-                  }}
-                  className="p-2 rounded border border-pearl-200 bg-pearl-50 hover:bg-pearl-100 text-midnight-800 text-left font-medium transition-colors"
-                >
-                  <strong className="block text-emerald-600">Staff / Teacher</strong>
-                  teacher@evaltech.io
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActivePortal('student');
-                    setStudentUsername('alice@evaltech.io');
-                    setPassword('Test@123');
-                  }}
-                  className="p-2 rounded border border-pearl-200 bg-pearl-50 hover:bg-pearl-100 text-midnight-800 text-left font-medium transition-colors"
-                >
-                  <strong className="block text-indigo-brand">Student Portal</strong>
-                  Pass: Test@123
-                </button>
-              </div>
-            </div>
           </CardContent>
         </Card>
 
