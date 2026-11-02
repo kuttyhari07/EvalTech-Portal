@@ -226,18 +226,6 @@ export const Login: React.FC = () => {
                   type="button"
                   onClick={() => {
                     setActivePortal('staff');
-                    setEmail('evaltech32@gmail.com');
-                    setPassword('Kuttyharihk@220429');
-                  }}
-                  className="col-span-2 p-2 rounded border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-midnight-900 text-left font-medium transition-colors"
-                >
-                  <strong className="block text-indigo-brand">⭐ Super Admin Quick-Fill</strong>
-                  evaltech32@gmail.com (Password pre-filled)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActivePortal('staff');
                     setEmail('teacher@evaltech.io');
                     setPassword('Teacher@2025');
                   }}
