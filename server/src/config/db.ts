@@ -1,10 +1,26 @@
+import dns from 'dns';
 import mongoose from 'mongoose';
 import { config } from './env';
 
 export async function connectDatabase(): Promise<void> {
   try {
     mongoose.set('strictQuery', true);
-    await mongoose.connect(config.MONGODB_URI);
+    try {
+      await mongoose.connect(config.MONGODB_URI);
+    } catch (connectErr: any) {
+      // Handle Windows local ISP DNS failure for MongoDB Atlas SRV records
+      if (
+        connectErr.message?.includes('querySrv') ||
+        connectErr.message?.includes('ECONNREFUSED') ||
+        connectErr.message?.includes('ETIMEOUT')
+      ) {
+        console.warn('[Database] Local DNS failed to resolve MongoDB SRV. Retrying with Google & Cloudflare DNS (8.8.8.8)...');
+        dns.setServers(['8.8.8.8', '1.1.1.1']);
+        await mongoose.connect(config.MONGODB_URI);
+      } else {
+        throw connectErr;
+      }
+    }
     console.log(`[Database] MongoDB successfully connected to ${config.MONGODB_URI.split('@').pop()}`);
   } catch (err: any) {
     console.error('[Database] Connection failed:', err.message);

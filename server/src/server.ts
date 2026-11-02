@@ -53,6 +53,11 @@ if (config.NODE_ENV !== 'test') {
 }
 
 // Global API rate limit
+// Root Health & Service Status (for Render / Hosting health check)
+app.get('/', (_req, res) => {
+  res.status(200).json({ status: 'ok', name: 'EvalTech API Service', version: '1.0.0' });
+});
+
 app.use('/api', generalLimiter);
 
 // Mount Modular Routes

@@ -1,10 +1,10 @@
-import nodemailer from 'nodemailer';
+import nodemailer, { Transporter } from 'nodemailer';
 import { config } from '../config/env';
 
 export class EmailService {
-  private static transporter: nodemailer.Transporter | null = null;
+  private static transporter: Transporter | null = null;
 
-  private static getTransporter(): nodemailer.Transporter {
+  private static getTransporter(): Transporter {
     if (!this.transporter) {
       if (config.SMTP_USER && config.SMTP_PASS) {
         this.transporter = nodemailer.createTransport({

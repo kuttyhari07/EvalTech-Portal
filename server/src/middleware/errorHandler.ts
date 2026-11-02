@@ -18,8 +18,9 @@ export function errorHandler(
 
   // Zod Validation Error
   if (err instanceof ZodError) {
-    const formatted = err.errors.map((e) => ({
-      field: e.path.join('.'),
+    const issues = (err as any).issues || (err as any).errors || [];
+    const formatted = issues.map((e: any) => ({
+      field: Array.isArray(e.path) ? e.path.join('.') : '',
       message: e.message,
     }));
     sendError(res, 'Validation failed', 422, formatted);
