@@ -46,7 +46,7 @@ export const Login: React.FC = () => {
         await studentLogin({ username: studentUsername, password });
         navigate('/student/dashboard');
       } else {
-        await login({ email, password });
+        await login({ email: email.trim(), password: password.trim() });
       }
     } catch (err: any) {
       setError(err.message || 'Failed to sign in. Please check your credentials.');
@@ -222,6 +222,18 @@ export const Login: React.FC = () => {
                 Demo Accounts
               </p>
               <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActivePortal('staff');
+                    setEmail('evaltech32@gmail.com');
+                    setPassword('Kuttyharihk@220429');
+                  }}
+                  className="col-span-2 p-2 rounded border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-midnight-900 text-left font-medium transition-colors"
+                >
+                  <strong className="block text-indigo-brand">⭐ Super Admin Quick-Fill</strong>
+                  evaltech32@gmail.com (Password pre-filled)
+                </button>
                 <button
                   type="button"
                   onClick={() => {

@@ -116,35 +116,47 @@ async function seedSystemDefaults(): Promise<void> {
       console.log('[Seed] Subscription plans seeded.');
     }
 
-    // 2. Seed or Update Default Super Admin Account
-    const targetEmail = 'evaltech32@gmail.com';
-    const targetPassword = 'Kuttyharihk@220429';
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(targetPassword, salt);
-
-    let superAdmin = await User.findOne({ email: targetEmail });
-    if (!superAdmin) {
-      await User.create({
+    // 2. Seed Default Super Admin Accounts
+    const adminAccounts = [
+      {
+        email: 'evaltech32@gmail.com',
         name: 'Super Admin',
-        email: targetEmail,
-        passwordHash,
-        role: ROLES.SUPER_ADMIN,
-        status: 'active',
-        emailVerified: true,
-      });
-      console.log('[Seed] Super Admin account created:', targetEmail);
-    } else {
-      await User.updateOne(
-        { _id: superAdmin._id },
-        {
-          $set: {
-            passwordHash,
-            status: 'active',
-            emailVerified: true,
-          },
-        }
-      );
-      console.log('[Seed] Super Admin verified:', targetEmail);
+        password: 'Kuttyharihk@220429',
+      },
+      {
+        email: 'admin@evaltech.io',
+        name: 'Super Admin (Backup)',
+        password: 'Admin@EvalTech2025!',
+      },
+    ];
+
+    for (const admin of adminAccounts) {
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(admin.password, salt);
+      const existing = await User.findOne({ email: admin.email });
+      if (!existing) {
+        await User.create({
+          name: admin.name,
+          email: admin.email,
+          passwordHash,
+          role: ROLES.SUPER_ADMIN,
+          status: 'active',
+          emailVerified: true,
+        });
+        console.log('[Seed] Super Admin account created:', admin.email);
+      } else {
+        await User.updateOne(
+          { _id: existing._id },
+          {
+            $set: {
+              passwordHash,
+              status: 'active',
+              emailVerified: true,
+            },
+          }
+        );
+        console.log('[Seed] Super Admin verified:', admin.email);
+      }
     }
   } catch (err: any) {
     console.error('[Seed] Error seeding system defaults:', err.message);
