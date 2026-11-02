@@ -44,16 +44,16 @@ async function cleanDatabase() {
 
   if (!superAdmin) {
     const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash('Admin@EvalTech2025!', salt);
+    const passwordHash = await bcrypt.hash('Kuttyharihk@220429', salt);
     superAdmin = await User.create({
       name: 'Super Admin',
-      email: 'admin@evaltech.io',
+      email: 'evaltech32@gmail.com',
       passwordHash,
       role: ROLES.SUPER_ADMIN,
       status: 'active',
       emailVerified: true,
     });
-    console.log('[User] Created default Super Admin account: admin@evaltech.io');
+    console.log('[User] Created default Super Admin account: evaltech32@gmail.com');
   } else {
     // Unset any organization reference since all organizations will be deleted
     await User.updateOne(

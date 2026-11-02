@@ -114,20 +114,36 @@ async function seedSystemDefaults(): Promise<void> {
       console.log('[Seed] Subscription plans seeded.');
     }
 
-    // 2. Seed Default Super Admin Account if not exists
-    const superAdmin = await User.findOne({ role: ROLES.SUPER_ADMIN });
+    // 2. Seed or Update Default Super Admin Account
+    const targetEmail = 'evaltech32@gmail.com';
+    const targetPassword = 'Kuttyharihk@220429';
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(targetPassword, salt);
+
+    let superAdmin = await User.findOne({ email: targetEmail });
     if (!superAdmin) {
-      const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash('Admin@EvalTech2025!', salt);
+      superAdmin = await User.findOne({ role: ROLES.SUPER_ADMIN });
+    }
+
+    if (superAdmin) {
+      superAdmin.name = 'Super Admin';
+      superAdmin.email = targetEmail;
+      superAdmin.passwordHash = passwordHash;
+      superAdmin.role = ROLES.SUPER_ADMIN;
+      superAdmin.status = 'active';
+      superAdmin.emailVerified = true;
+      await superAdmin.save();
+      console.log('[Seed] Super Admin account updated:', targetEmail);
+    } else {
       await User.create({
         name: 'Super Admin',
-        email: 'admin@evaltech.io',
+        email: targetEmail,
         passwordHash,
         role: ROLES.SUPER_ADMIN,
         status: 'active',
         emailVerified: true,
       });
-      console.log('[Seed] Default Super Admin account created: admin@evaltech.io / Admin@EvalTech2025!');
+      console.log('[Seed] Super Admin account created:', targetEmail);
     }
   } catch (err: any) {
     console.error('[Seed] Error seeding system defaults:', err.message);
