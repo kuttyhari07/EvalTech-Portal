@@ -26,6 +26,7 @@ import { StaffBilling } from '../pages/staff/Billing';
 // Organization Admin Pages
 import { OrgOverview } from '../pages/organization/Overview';
 import { OrgStaffManagement } from '../pages/organization/StaffManagement';
+import { OrgDepartmentClassManagement } from '../pages/organization/DepartmentClassManagement';
 
 // Super Admin Pages
 import { AdminOverview } from '../pages/admin/Overview';
@@ -139,7 +140,7 @@ export const AppRoutes: React.FC = () => {
       >
         <Route index element={<OrgOverview />} />
         <Route path="staff" element={<OrgStaffManagement />} />
-        <Route path="classes" element={<StaffClassesList />} />
+        <Route path="classes" element={<OrgDepartmentClassManagement />} />
         <Route path="students" element={<StaffStudentsList />} />
         <Route path="billing" element={<StaffBilling />} />
       </Route>

@@ -107,15 +107,30 @@ export class OrganizationController {
       return;
     }
 
+    // If assignedClassIds is not provided or empty, assign to all classes in this organization
+    let targetClassIds = assignedClassIds;
+    if (!targetClassIds || targetClassIds.length === 0) {
+      const orgClasses = await Class.find({ organizationId: org._id, isActive: true });
+      targetClassIds = orgClasses.map((c) => c._id);
+    }
+
     const membership = await OrganizationMembership.create({
       organizationId: org._id,
       userId: user._id,
       roleInOrg,
       status: 'invited',
-      assignedClassIds,
+      assignedClassIds: targetClassIds,
       invitationToken,
       invitedAt: new Date(),
     });
+
+    // Add user._id to assignedStaffIds in all targeted classes
+    if (targetClassIds.length > 0) {
+      await Class.updateMany(
+        { _id: { $in: targetClassIds } },
+        { $addToSet: { assignedStaffIds: user._id } }
+      );
+    }
 
     // Send invitation email
     EmailService.sendStaffInvitation(
@@ -130,10 +145,10 @@ export class OrganizationController {
       action: 'ORG_STAFF_INVITED',
       entity: 'OrganizationMembership',
       entityId: membership._id.toString(),
-      metadata: { invitedEmail: user.email },
+      metadata: { invitedEmail: user.email, assignedClassCount: targetClassIds.length },
     });
 
-    sendSuccess(res, membership, `Invitation sent to ${user.email}`, 201);
+    sendSuccess(res, membership, `Invitation sent to ${user.email} with access to all classes.`, 201);
   }
 
   static async acceptInvitation(req: AuthRequest, res: Response): Promise<void> {
@@ -174,6 +189,14 @@ export class OrganizationController {
     membership.invitationToken = undefined;
     await membership.save();
 
+    // Ensure staff member is added to assignedStaffIds in all assigned classes
+    if (membership.assignedClassIds && membership.assignedClassIds.length > 0) {
+      await Class.updateMany(
+        { _id: { $in: membership.assignedClassIds } },
+        { $addToSet: { assignedStaffIds: user._id } }
+      );
+    }
+
     sendSuccess(res, null, 'Invitation accepted! You may now sign in.');
   }
 
@@ -189,6 +212,14 @@ export class OrganizationController {
     if (!membership) {
       sendError(res, 'Staff membership not found.', 404);
       return;
+    }
+
+    // Unassign staff from classes
+    if (membership.assignedClassIds && membership.assignedClassIds.length > 0) {
+      await Class.updateMany(
+        { _id: { $in: membership.assignedClassIds } },
+        { $pull: { assignedStaffIds: membership.userId } }
+      );
     }
 
     await OrganizationMembership.findByIdAndDelete(membershipId);

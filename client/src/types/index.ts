@@ -64,6 +64,25 @@ export interface Subscription {
   autoRenew: boolean;
 }
 
+export interface DepartmentItem {
+  _id: string;
+  name: string;
+  code: string;
+  description?: string;
+  organizationId: string;
+  headOfDepartmentId?: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  isActive: boolean;
+  classCount?: number;
+  staffCount?: number;
+  studentCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ClassItem {
   _id: string;
   name: string;
@@ -73,11 +92,21 @@ export interface ClassItem {
   code: string;
   description?: string;
   organizationId?: string;
+  departmentId?: {
+    _id: string;
+    name: string;
+    code: string;
+  };
   staffId: {
     _id: string;
     name: string;
     email: string;
   };
+  assignedStaffIds?: {
+    _id: string;
+    name: string;
+    email: string;
+  }[];
   isActive: boolean;
   studentCount?: number;
   createdAt: string;

@@ -16,6 +16,7 @@ import { ROLES, INITIAL_PLANS } from './constants';
 // Import Routes
 import authRoutes from './routes/auth.routes';
 import orgRoutes from './routes/organization.routes';
+import departmentRoutes from './routes/department.routes';
 import classRoutes from './routes/class.routes';
 import studentRoutes from './routes/student.routes';
 import subscriptionRoutes from './routes/subscription.routes';
@@ -84,6 +85,7 @@ app.use('/api', generalLimiter);
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/organizations', orgRoutes);
+app.use('/api/departments', departmentRoutes);
 app.use('/api/classes', classRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);

@@ -130,6 +130,13 @@ export const StaffClassesList: React.FC = () => {
                 <CardDescription>
                   {cls.subject || 'General'} {cls.section ? `• Section ${cls.section}` : ''}
                 </CardDescription>
+                {cls.departmentId && typeof cls.departmentId === 'object' && (
+                  <div className="mt-2">
+                    <span className="inline-block text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 rounded">
+                      Dept: {cls.departmentId.name} ({cls.departmentId.code})
+                    </span>
+                  </div>
+                )}
               </CardHeader>
 
               <CardContent className="space-y-4">

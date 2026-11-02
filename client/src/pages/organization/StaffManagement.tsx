@@ -102,6 +102,7 @@ export const OrgStaffManagement: React.FC = () => {
                   <tr className="border-b border-pearl-200 text-midnight-600 uppercase font-semibold text-[11px]">
                     <th className="py-3 px-4">Staff Member</th>
                     <th className="py-3 px-4">Institutional Role</th>
+                    <th className="py-3 px-4">Assigned Classes</th>
                     <th className="py-3 px-4">Status</th>
                     <th className="py-3 px-4">Joined / Invited</th>
                     <th className="py-3 px-4 text-right">Actions</th>
@@ -118,6 +119,11 @@ export const OrgStaffManagement: React.FC = () => {
                         <Badge variant={m.roleInOrg === 'org_admin' ? 'purple' : 'default'}>
                           {m.roleInOrg === 'org_admin' ? 'Organization Admin' : 'Staff Instructor'}
                         </Badge>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="inline-flex items-center gap-1 font-semibold text-midnight-800 bg-pearl-100 px-2 py-0.5 rounded text-[11px]">
+                          {m.assignedClassIds?.length || 0} Classes
+                        </span>
                       </td>
                       <td className="py-3 px-4">
                         <Badge variant={m.status === 'active' ? 'success' : 'warning'}>
@@ -182,6 +188,13 @@ export const OrgStaffManagement: React.FC = () => {
               <option value="staff">Staff / Teacher (Own classes & exams)</option>
               <option value="org_admin">Organization Co-Admin (Full access to all classes)</option>
             </select>
+          </div>
+
+          <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200/70 text-xs text-emerald-800 flex items-start gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+            <span>
+              <strong>Automatic All-Class Access:</strong> When invited, this staff member will automatically be added to all classes across all departments so they can manage student rosters and author exams right away.
+            </span>
           </div>
 
           <div className="flex justify-end gap-3 pt-3">

@@ -210,6 +210,9 @@ export const StaffClassDetail: React.FC = () => {
           </div>
           <p className="text-xs text-midnight-600">
             Subject: {classData.subject} • Section: {classData.section || 'All'} • Academic Year: {classData.academicYear}
+            {classData.departmentId && typeof classData.departmentId === 'object' && (
+              <> • Department: <span className="font-bold text-indigo-700">{classData.departmentId.name} ({classData.departmentId.code})</span></>
+            )}
           </p>
         </div>
 

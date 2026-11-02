@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { z } from 'zod';
-import { Class, ClassEnrollment, Student, User } from '../models';
+import mongoose from 'mongoose';
+import { Class, ClassEnrollment, OrganizationMembership, Student, User } from '../models';
 import { AuthRequest } from '../middleware/auth';
 import { sendSuccess, sendError } from '../utils/response';
 import { ROLES } from '../constants';
@@ -13,7 +14,9 @@ const createClassSchema = z.object({
   academicYear: z.string().optional(),
   code: z.string().optional(),
   description: z.string().optional(),
+  departmentId: z.string().optional(),
   assignedStaffId: z.string().optional(),
+  assignedStaffIds: z.array(z.string()).optional(),
 });
 
 export class ClassController {
@@ -32,6 +35,28 @@ export class ClassController {
       data.code ||
       `CLS-${Math.floor(1000 + Math.random() * 9000)}`;
 
+    const initialAssignedStaffIds: string[] = [];
+    if (targetStaffId) initialAssignedStaffIds.push(targetStaffId.toString());
+    if (data.assignedStaffIds) {
+      initialAssignedStaffIds.push(...data.assignedStaffIds);
+    }
+
+    // If part of an organization, automatically include all org staff members
+    if (orgId) {
+      const orgStaffMemberships = await OrganizationMembership.find({
+        organizationId: orgId,
+        roleInOrg: 'staff',
+        status: { $in: ['active', 'invited'] },
+      });
+      for (const m of orgStaffMemberships) {
+        initialAssignedStaffIds.push(m.userId.toString());
+      }
+    }
+
+    const uniqueStaffIds = Array.from(new Set(initialAssignedStaffIds)).map(
+      (id) => new mongoose.Types.ObjectId(id)
+    );
+
     const newClass = await Class.create({
       name: data.name,
       section: data.section,
@@ -40,16 +65,26 @@ export class ClassController {
       code,
       description: data.description,
       organizationId: orgId,
+      departmentId: data.departmentId ? new mongoose.Types.ObjectId(data.departmentId) : undefined,
       staffId: targetStaffId,
+      assignedStaffIds: uniqueStaffIds,
       isActive: true,
     });
+
+    // Sync back to OrganizationMembership assignedClassIds
+    if (orgId && uniqueStaffIds.length > 0) {
+      await OrganizationMembership.updateMany(
+        { organizationId: orgId, userId: { $in: uniqueStaffIds } },
+        { $addToSet: { assignedClassIds: newClass._id } }
+      );
+    }
 
     await recordAuditLog({
       req,
       action: 'CLASS_CREATE',
       entity: 'Class',
       entityId: newClass._id.toString(),
-      metadata: { name: newClass.name, code: newClass.code },
+      metadata: { name: newClass.name, code: newClass.code, departmentId: data.departmentId },
     });
 
     sendSuccess(res, newClass, 'Class created successfully.', 201);
@@ -62,17 +97,34 @@ export class ClassController {
 
     const query: any = { isActive: true };
 
+    if (req.query.departmentId) {
+      query.departmentId = req.query.departmentId;
+    }
+
     if (role === ROLES.SUPER_ADMIN) {
       // Super admin sees all or filtered by org
       if (req.query.organizationId) query.organizationId = req.query.organizationId;
     } else if (role === ROLES.ORG_ADMIN && orgId) {
       query.organizationId = orgId;
     } else {
-      // Staff only sees classes they own/are assigned to
-      query.staffId = userId;
+      // Staff sees classes they own, or are assigned to, or assigned in membership
+      const membership = orgId
+        ? await OrganizationMembership.findOne({ organizationId: orgId, userId })
+        : null;
+      const assignedIds = membership?.assignedClassIds || [];
+
+      query.$or = [
+        { staffId: userId },
+        { assignedStaffIds: userId },
+        { _id: { $in: assignedIds } },
+      ];
     }
 
-    const classes = await Class.find(query).populate('staffId', 'name email').sort({ createdAt: -1 });
+    const classes = await Class.find(query)
+      .populate('staffId', 'name email')
+      .populate('assignedStaffIds', 'name email')
+      .populate('departmentId', 'name code')
+      .sort({ createdAt: -1 });
 
     // Attach student enrollment count to each class
     const classIds = classes.map((c) => c._id);
@@ -96,8 +148,12 @@ export class ClassController {
 
   static async getClassById(req: AuthRequest, res: Response): Promise<void> {
     const { id } = req.params;
-    const cls = await Class.findById(id).populate('staffId', 'name email');
-    if (!cls) {
+    const cls = await Class.findById(id)
+      .populate('staffId', 'name email')
+      .populate('assignedStaffIds', 'name email')
+      .populate('departmentId', 'name code');
+
+    if (!cls || !cls.isActive) {
       sendError(res, 'Class not found', 404);
       return;
     }
@@ -116,20 +172,34 @@ export class ClassController {
     const { id } = req.params;
     const data = req.body;
 
+    const updateFields: any = {
+      name: data.name,
+      section: data.section,
+      subject: data.subject,
+      academicYear: data.academicYear,
+      description: data.description,
+    };
+
+    if (data.departmentId !== undefined) {
+      updateFields.departmentId = data.departmentId || null;
+    }
+
+    if (data.assignedStaffId) {
+      updateFields.staffId = data.assignedStaffId;
+    }
+
+    if (Array.isArray(data.assignedStaffIds)) {
+      updateFields.assignedStaffIds = data.assignedStaffIds;
+    }
+
     const cls = await Class.findByIdAndUpdate(
       id,
-      {
-        $set: {
-          name: data.name,
-          section: data.section,
-          subject: data.subject,
-          academicYear: data.academicYear,
-          description: data.description,
-          staffId: data.assignedStaffId || undefined,
-        },
-      },
+      { $set: updateFields },
       { new: true }
-    );
+    )
+      .populate('staffId', 'name email')
+      .populate('assignedStaffIds', 'name email')
+      .populate('departmentId', 'name code');
 
     if (!cls) {
       sendError(res, 'Class not found', 404);
@@ -137,6 +207,37 @@ export class ClassController {
     }
 
     sendSuccess(res, cls, 'Class updated successfully.');
+  }
+
+  static async assignStaffToClass(req: AuthRequest, res: Response): Promise<void> {
+    const { id } = req.params;
+    const { staffIds } = req.body;
+
+    if (!Array.isArray(staffIds)) {
+      sendError(res, 'staffIds array is required.', 400);
+      return;
+    }
+
+    const cls = await Class.findById(id);
+    if (!cls || !cls.isActive) {
+      sendError(res, 'Class not found.', 404);
+      return;
+    }
+
+    cls.assignedStaffIds = Array.from(
+      new Set([...(cls.assignedStaffIds || []).map((s) => s.toString()), ...staffIds])
+    ).map((sid) => new mongoose.Types.ObjectId(sid));
+
+    await cls.save();
+
+    if (cls.organizationId) {
+      await OrganizationMembership.updateMany(
+        { organizationId: cls.organizationId, userId: { $in: staffIds } },
+        { $addToSet: { assignedClassIds: cls._id } }
+      );
+    }
+
+    sendSuccess(res, cls, 'Staff assigned to class successfully.');
   }
 
   static async deleteClass(req: AuthRequest, res: Response): Promise<void> {

@@ -1,6 +1,7 @@
 export * from './User';
 export * from './Organization';
 export * from './OrganizationMembership';
+export * from './Department';
 export * from './Class';
 export * from './Student';
 export * from './ClassEnrollment';
