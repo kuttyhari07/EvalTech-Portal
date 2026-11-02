@@ -51,9 +51,7 @@ export const OrgDepartmentClassManagement: React.FC = () => {
   const [isClassModalOpen, setIsClassModalOpen] = useState(false);
   const [className, setClassName] = useState('');
   const [classSection, setClassSection] = useState('');
-  const [classSubject, setClassSubject] = useState('');
   const [classAcademicYear, setClassAcademicYear] = useState('2025-2026');
-  const [classCode, setClassCode] = useState('');
   const [classDescription, setClassDescription] = useState('');
   const [classDepartmentId, setClassDepartmentId] = useState('');
   const [assignAllStaff, setAssignAllStaff] = useState(true);
@@ -147,8 +145,6 @@ export const OrgDepartmentClassManagement: React.FC = () => {
     setClassDepartmentId(deptId);
     setClassName('');
     setClassSection('');
-    setClassSubject('');
-    setClassCode('');
     setClassDescription('');
     setAssignAllStaff(true);
     setSelectedStaffIds(staffMembers.map((m) => m.userId?._id).filter(Boolean));
@@ -167,9 +163,7 @@ export const OrgDepartmentClassManagement: React.FC = () => {
       await api.post('/classes', {
         name: className,
         section: classSection,
-        subject: classSubject,
         academicYear: classAcademicYear,
-        code: classCode || undefined,
         description: classDescription,
         departmentId: classDepartmentId || undefined,
         assignedStaffIds: assignedIds,
@@ -179,8 +173,6 @@ export const OrgDepartmentClassManagement: React.FC = () => {
       setIsClassModalOpen(false);
       setClassName('');
       setClassSection('');
-      setClassSubject('');
-      setClassCode('');
       setClassDescription('');
       setClassDepartmentId('');
       fetchData();
@@ -277,8 +269,6 @@ export const OrgDepartmentClassManagement: React.FC = () => {
               setClassDepartmentId('');
               setClassName('');
               setClassSection('');
-              setClassSubject('');
-              setClassCode('');
               setClassDescription('');
               setAssignAllStaff(true);
               setIsClassModalOpen(true);
@@ -493,25 +483,23 @@ export const OrgDepartmentClassManagement: React.FC = () => {
                 <Card key={cls._id} className="flex flex-col justify-between hover:border-indigo-brand/40 transition-colors shadow-sm">
                   <CardHeader>
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-mono text-[11px] font-bold text-indigo-brand bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
-                        {cls.code}
-                      </span>
+                      {deptObj ? (
+                        <Badge variant="purple" className="text-[10px] font-semibold">
+                          Dept: {deptObj.name} ({deptObj.code})
+                        </Badge>
+                      ) : (
+                        <span className="text-[11px] text-midnight-500 font-medium">General Class</span>
+                      )}
                       <span className="text-[11px] text-midnight-600 flex items-center gap-1 font-medium">
                         <Calendar className="w-3.5 h-3.5" /> {cls.academicYear || '2025-2026'}
                       </span>
                     </div>
 
                     <CardTitle className="text-base font-bold text-midnight-950 mt-1">{cls.name}</CardTitle>
-                    <CardDescription className="text-xs">
-                      {cls.subject || 'General'} {cls.section ? `• Sec ${cls.section}` : ''}
-                    </CardDescription>
-
-                    {deptObj && (
-                      <div className="mt-2">
-                        <Badge variant="purple" className="text-[10px] font-semibold">
-                          Dept: {deptObj.name} ({deptObj.code})
-                        </Badge>
-                      </div>
+                    {cls.section && (
+                      <CardDescription className="text-xs">
+                        Section: {cls.section}
+                      </CardDescription>
                     )}
                   </CardHeader>
 
@@ -633,40 +621,25 @@ export const OrgDepartmentClassManagement: React.FC = () => {
           </div>
 
           <Input
-            label="Class / Course Name"
+            label="Class Name"
             required
-            placeholder="e.g. Data Structures & Algorithms"
+            placeholder="e.g. Section A, 2nd Year - Sec A, Class 10"
             value={className}
             onChange={(e) => setClassName(e.target.value)}
           />
 
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label="Subject / Topic"
-              placeholder="e.g. Computer Science"
-              value={classSubject}
-              onChange={(e) => setClassSubject(e.target.value)}
-            />
-            <Input
-              label="Section / Cohort"
+              label="Section / Cohort (Optional)"
               placeholder="e.g. Sec A, Year 2"
               value={classSection}
               onChange={(e) => setClassSection(e.target.value)}
             />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
             <Input
               label="Academic Year"
               placeholder="e.g. 2025-2026"
               value={classAcademicYear}
               onChange={(e) => setClassAcademicYear(e.target.value)}
-            />
-            <Input
-              label="Class Code (Optional)"
-              placeholder="Auto-generated if empty"
-              value={classCode}
-              onChange={(e) => setClassCode(e.target.value)}
             />
           </div>
 

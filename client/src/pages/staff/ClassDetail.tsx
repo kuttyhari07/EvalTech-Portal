@@ -204,12 +204,9 @@ export const StaffClassDetail: React.FC = () => {
             <h2 className="text-2xl font-extrabold text-midnight-950 tracking-tight">
               {classData.name}
             </h2>
-            <span className="font-mono text-xs font-bold bg-indigo-50 text-indigo-brand px-2 py-0.5 rounded">
-              {classData.code}
-            </span>
           </div>
           <p className="text-xs text-midnight-600">
-            Subject: {classData.subject} • Section: {classData.section || 'All'} • Academic Year: {classData.academicYear}
+            {classData.section ? `Section: ${classData.section} • ` : ''}Academic Year: {classData.academicYear}
             {classData.departmentId && typeof classData.departmentId === 'object' && (
               <> • Department: <span className="font-bold text-indigo-700">{classData.departmentId.name} ({classData.departmentId.code})</span></>
             )}

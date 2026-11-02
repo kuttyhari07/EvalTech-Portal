@@ -20,9 +20,7 @@ export const StaffClassesList: React.FC = () => {
   // New class form
   const [name, setName] = useState('');
   const [section, setSection] = useState('');
-  const [subject, setSubject] = useState('');
   const [academicYear, setAcademicYear] = useState('2025-2026');
-  const [code, setCode] = useState('');
   const [description, setDescription] = useState('');
 
   const fetchClasses = async () => {
@@ -45,17 +43,13 @@ export const StaffClassesList: React.FC = () => {
       await api.post('/classes', {
         name,
         section,
-        subject,
         academicYear,
-        code: code || undefined,
         description,
       });
 
       setIsModalOpen(false);
       setName('');
       setSection('');
-      setSubject('');
-      setCode('');
       setDescription('');
       fetchClasses();
     } catch (err: any) {
@@ -68,8 +62,7 @@ export const StaffClassesList: React.FC = () => {
   const filtered = classes.filter(
     (c) =>
       c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.code.toLowerCase().includes(search.toLowerCase()) ||
-      c.subject?.toLowerCase().includes(search.toLowerCase())
+      (c.section && c.section.toLowerCase().includes(search.toLowerCase()))
   );
 
   return (
@@ -119,23 +112,22 @@ export const StaffClassesList: React.FC = () => {
             <Card key={cls._id} className="flex flex-col justify-between hover:border-indigo-brand/40 transition-colors">
               <CardHeader>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="font-mono text-[11px] font-bold text-indigo-brand bg-indigo-50 px-2 py-0.5 rounded">
-                    {cls.code}
-                  </span>
+                  {cls.departmentId && typeof cls.departmentId === 'object' ? (
+                    <span className="inline-block text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 rounded">
+                      Dept: {cls.departmentId.name} ({cls.departmentId.code})
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-midnight-500 font-medium">General Class</span>
+                  )}
                   <span className="text-[11px] text-midnight-600 flex items-center gap-1 font-medium">
                     <Calendar className="w-3.5 h-3.5" /> {cls.academicYear || '2025-2026'}
                   </span>
                 </div>
                 <CardTitle className="text-base">{cls.name}</CardTitle>
-                <CardDescription>
-                  {cls.subject || 'General'} {cls.section ? `• Section ${cls.section}` : ''}
-                </CardDescription>
-                {cls.departmentId && typeof cls.departmentId === 'object' && (
-                  <div className="mt-2">
-                    <span className="inline-block text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 rounded">
-                      Dept: {cls.departmentId.name} ({cls.departmentId.code})
-                    </span>
-                  </div>
+                {cls.section && (
+                  <CardDescription>
+                    Section {cls.section}
+                  </CardDescription>
                 )}
               </CardHeader>
 
@@ -166,45 +158,29 @@ export const StaffClassesList: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title="Create New Class"
-        description="Fill in subject and section details to initialize your class."
+        description="Fill in class details to initialize your class."
       >
         <form onSubmit={handleCreate} className="space-y-4">
           <Input
-            label="Class Title"
+            label="Class Name"
             required
-            placeholder="e.g. Grade 10 - Mathematics"
+            placeholder="e.g. Section A, 2nd Year - Sec A, Class 10"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
 
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Subject"
-              required
-              placeholder="e.g. Mathematics"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-            />
-            <Input
-              label="Section"
+              label="Section (Optional)"
               placeholder="e.g. Section A"
               value={section}
               onChange={(e) => setSection(e.target.value)}
             />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
             <Input
               label="Academic Year"
               placeholder="2025-2026"
               value={academicYear}
               onChange={(e) => setAcademicYear(e.target.value)}
-            />
-            <Input
-              label="Class Code (Optional)"
-              placeholder="Auto-generated if left blank"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
             />
           </div>
 
