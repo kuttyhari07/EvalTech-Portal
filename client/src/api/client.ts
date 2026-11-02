@@ -16,6 +16,15 @@ export const api = axios.create({
   },
 });
 
+// Automatically attach Bearer auth token for cross-origin Vercel <-> Render requests
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('evaltech_auth_token');
+  if (token && !config.headers.Authorization) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {

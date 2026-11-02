@@ -25,7 +25,7 @@ export function setAuthCookie(res: Response, token: string): void {
   res.cookie('token', token, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction ? 'strict' : 'lax',
+    sameSite: isProduction ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     domain: config.COOKIE_DOMAIN || undefined,
   });
@@ -36,7 +36,7 @@ export function clearAuthCookie(res: Response): void {
   res.clearCookie('token', {
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction ? 'strict' : 'lax',
+    sameSite: isProduction ? 'none' : 'lax',
     domain: config.COOKIE_DOMAIN || undefined,
   });
 }

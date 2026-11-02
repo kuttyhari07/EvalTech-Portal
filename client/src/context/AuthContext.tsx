@@ -45,6 +45,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (credentials: { email: string; password: string }) => {
     const res = await api.post('/auth/login', credentials);
     if (res.data?.success) {
+      if (res.data.data?.token) {
+        localStorage.setItem('evaltech_auth_token', res.data.data.token);
+      }
       setUser(res.data.data.user);
       await refreshUser();
     }
@@ -53,6 +56,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const studentLogin = async (credentials: { username: string; password: string }) => {
     const res = await api.post('/auth/student-login', credentials);
     if (res.data?.success) {
+      if (res.data.data?.token) {
+        localStorage.setItem('evaltech_auth_token', res.data.data.token);
+      }
       setUser(res.data.data.user);
       await refreshUser();
     }
@@ -61,6 +67,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (data: any) => {
     const res = await api.post('/auth/register', data);
     if (res.data?.success) {
+      if (res.data.data?.token) {
+        localStorage.setItem('evaltech_auth_token', res.data.data.token);
+      }
       setUser(res.data.data.user);
       await refreshUser();
     }
@@ -70,6 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await api.post('/auth/logout');
     } finally {
+      localStorage.removeItem('evaltech_auth_token');
       setUser(null);
       setOrganization(null);
     }
