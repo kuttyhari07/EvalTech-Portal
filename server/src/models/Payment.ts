@@ -5,6 +5,10 @@ export interface IPayment extends Document {
   targetType: 'staff' | 'organization';
   targetId: mongoose.Types.ObjectId;
   planId: mongoose.Types.ObjectId;
+  paymentMethod?: 'razorpay' | 'direct_upi' | 'phonepe_webhook';
+  merchantTransactionId?: string;
+  upiUtr?: string;
+  upiVpa?: string;
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
   razorpaySignature?: string;
@@ -25,6 +29,15 @@ const paymentSchema = new Schema<IPayment>(
     targetType: { type: String, enum: ['staff', 'organization'], required: true, index: true },
     targetId: { type: Schema.Types.ObjectId, required: true, index: true },
     planId: { type: Schema.Types.ObjectId, ref: 'SubscriptionPlan', required: true },
+    paymentMethod: {
+      type: String,
+      enum: ['razorpay', 'direct_upi', 'phonepe_webhook'],
+      default: 'direct_upi',
+      index: true,
+    },
+    merchantTransactionId: { type: String, index: true },
+    upiUtr: { type: String, index: true },
+    upiVpa: { type: String },
     razorpayOrderId: { type: String, index: true },
     razorpayPaymentId: { type: String, index: true },
     razorpaySignature: { type: String },

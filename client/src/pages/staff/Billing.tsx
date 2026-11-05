@@ -4,6 +4,7 @@ import { Subscription, SubscriptionPlan, CapacityCheck } from '../../types';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { Modal } from '../../components/ui/Modal';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
 import {
   CreditCard,
@@ -26,6 +27,9 @@ import {
   Award,
   Infinity,
   Flame,
+  Copy,
+  Smartphone,
+  QrCode,
 } from 'lucide-react';
 
 export const StaffBilling: React.FC = () => {
@@ -37,6 +41,14 @@ export const StaffBilling: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [upgradingPlanId, setUpgradingPlanId] = useState<string | null>(null);
   const [upgradeSuccess, setUpgradeSuccess] = useState<string | null>(null);
+
+  // Direct UPI Order & Polling State
+  const [upiOrder, setUpiOrder] = useState<any>(null);
+  const [isUpiModalOpen, setIsUpiModalOpen] = useState(false);
+  const [utrInput, setUtrInput] = useState('');
+  const [isVerifyingUtr, setIsVerifyingUtr] = useState(false);
+  const [copiedUpi, setCopiedUpi] = useState(false);
+  const [pollingStatus, setPollingStatus] = useState<string>('waiting');
 
   const fetchData = async () => {
     try {
@@ -58,33 +70,96 @@ export const StaffBilling: React.FC = () => {
     fetchData();
   }, []);
 
+  // Live Auto-Poll for Webhook Confirmation
+  useEffect(() => {
+    if (!isUpiModalOpen || !upiOrder?.paymentId || pollingStatus === 'success') return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await api.get(`/direct-upi/status/${upiOrder.paymentId}`);
+        if (res.data?.data?.isCaptured) {
+          setPollingStatus('success');
+          setUpgradeSuccess(`🎉 Payment Verified! Successfully upgraded to ${upiOrder.planName}!`);
+          clearInterval(interval);
+          fetchData();
+          setTimeout(() => {
+            setIsUpiModalOpen(false);
+          }, 2500);
+        }
+      } catch (err) {
+        // quiet poll check
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [isUpiModalOpen, upiOrder, pollingStatus]);
+
   const handleUpgrade = async (plan: SubscriptionPlan) => {
+    // If Free Tier, activate immediately
+    if (plan.priceMonthly === 0) {
+      setUpgradingPlanId(plan._id);
+      try {
+        await api.post('/subscriptions/checkout', { planId: plan._id, billingCycle });
+        await api.post('/subscriptions/verify', {
+          razorpayOrderId: `free_${Date.now()}`,
+          razorpayPaymentId: `free_${Date.now()}`,
+          razorpaySignature: 'free_plan',
+        });
+        setUpgradeSuccess(`Switched to Free Explorer Plan.`);
+        fetchData();
+      } catch (err: any) {
+        alert(err.message || 'Failed to switch plan.');
+      } finally {
+        setUpgradingPlanId(null);
+      }
+      return;
+    }
+
+    // Direct UPI Checkout Order
     setUpgradingPlanId(plan._id);
     setUpgradeSuccess(null);
 
     try {
-      // 1. Initialize Order
-      const res = await api.post('/subscriptions/checkout', {
+      const res = await api.post('/direct-upi/create-order', {
         planId: plan._id,
         billingCycle,
       });
 
       const orderData = res.data?.data;
-
-      // In sandbox / simulated mode or when Razorpay script is not in browser
-      // Complete verification directly
-      const verifyRes = await api.post('/subscriptions/verify', {
-        razorpayOrderId: orderData?.orderId || `order_${Date.now()}`,
-        razorpayPaymentId: `pay_${Date.now()}`,
-        razorpaySignature: 'sandbox_verified_signature',
-      });
-
-      setUpgradeSuccess(`Successfully upgraded to ${plan.name}! Your Next-Gen AI exam allocation is immediately active.`);
-      fetchData();
+      setUpiOrder(orderData);
+      setPollingStatus('waiting');
+      setUtrInput('');
+      setIsUpiModalOpen(true);
     } catch (err: any) {
-      alert(err.message || 'Upgrade failed.');
+      alert(err.message || 'Failed to initialize UPI order.');
     } finally {
       setUpgradingPlanId(null);
+    }
+  };
+
+  const handleSubmitUtr = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!utrInput || utrInput.trim().length < 8) {
+      alert('Please enter a valid 12-digit UTR Reference number.');
+      return;
+    }
+
+    setIsVerifyingUtr(true);
+    try {
+      await api.post('/direct-upi/submit-utr', {
+        paymentId: upiOrder.paymentId,
+        utr: utrInput.trim(),
+      });
+      setPollingStatus('success');
+      setUpgradeSuccess(`🎉 UTR Verified! Successfully upgraded to ${upiOrder.planName}!`);
+      fetchData();
+      setTimeout(() => {
+        setIsUpiModalOpen(false);
+      }, 2500);
+    } catch (err: any) {
+      alert(err.message || 'Verification failed. Please check your UTR number.');
+    } finally {
+      setIsVerifyingUtr(false);
     }
   };
 
@@ -571,6 +646,131 @@ export const StaffBilling: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* ⚡ 100% Direct UPI Modal with Auto-Polling Webhook Detection */}
+      <Modal
+        isOpen={isUpiModalOpen}
+        onClose={() => setIsUpiModalOpen(false)}
+        title="⚡ Scan & Pay via Direct UPI (0% Platform Fee)"
+        size="md"
+      >
+        {upiOrder && (
+          <div className="space-y-4 text-xs">
+            {/* Plan & Amount Summary */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-950 via-slate-900 to-midnight-950 text-white flex items-center justify-between shadow-md">
+              <div>
+                <span className="text-[10px] font-mono uppercase text-indigo-300 block">Upgrade Target</span>
+                <h4 className="text-base font-extrabold text-white">{upiOrder.planName}</h4>
+                <span className="text-[11px] text-pearl-300 font-mono">
+                  {billingCycle === 'yearly' ? 'Annual Commitment (2 Mos Free)' : 'Monthly Flexible Cycle'}
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] font-mono uppercase text-emerald-400 block">Total Due</span>
+                <div className="text-2xl font-extrabold text-white font-mono">
+                  ₹{upiOrder.amount.toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            {pollingStatus === 'success' ? (
+              <div className="p-8 text-center space-y-3 bg-emerald-50 rounded-2xl border border-emerald-200 animate-fadeIn">
+                <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto animate-bounce" />
+                <h4 className="text-base font-bold text-emerald-950">Payment Automatically Verified!</h4>
+                <p className="text-xs text-emerald-800">
+                  Your {upiOrder.planName} subscription is now fully active with Next-Gen AI features and unlimited student seats.
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* QR Code and Instructions */}
+                <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-pearl-200 shadow-sm space-y-3">
+                  <img
+                    src={upiOrder.qrCodeUrl}
+                    alt="Scan UPI QR"
+                    className="w-48 h-48 rounded-xl border border-pearl-200 shadow-subtle p-2 bg-white"
+                  />
+                  <div className="text-center space-y-1">
+                    <span className="text-[11px] text-midnight-600 font-medium">
+                      Scan with GPay, PhonePe, Paytm, CRED, or BHIM
+                    </span>
+                    <div className="flex items-center justify-center gap-1.5 pt-1">
+                      <span className="font-mono font-bold text-midnight-900 bg-pearl-100 px-2 py-0.5 rounded text-xs select-all">
+                        {upiOrder.upiVpa}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(upiOrder.upiVpa);
+                          setCopiedUpi(true);
+                          setTimeout(() => setCopiedUpi(false), 2000);
+                        }}
+                        className="text-[11px] text-indigo-brand font-semibold hover:underline flex items-center gap-1"
+                      >
+                        {copiedUpi ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                        {copiedUpi ? 'Copied' : 'Copy'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Mobile Direct Intent Link */}
+                  <a
+                    href={upiOrder.upiIntentUri}
+                    className="sm:hidden inline-flex items-center gap-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2.5 rounded-xl shadow-md w-full justify-center transition-colors"
+                  >
+                    <Smartphone className="w-4 h-4" />
+                    Open In PhonePe / GPay (Pay Now)
+                  </a>
+                </div>
+
+                {/* Polling Live Radar Bar */}
+                <div className="flex items-center justify-between p-3 rounded-xl bg-pearl-100/70 border border-pearl-200 text-[11px]">
+                  <div className="flex items-center gap-2 text-midnight-700">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                    </span>
+                    <span className="font-mono">Listening for bank webhook confirmation...</span>
+                  </div>
+                  <span className="text-[10px] text-midnight-500 font-mono">Auto-sync 3s</span>
+                </div>
+
+                {/* Fallback UTR Input Form */}
+                <form onSubmit={handleSubmitUtr} className="pt-2 border-t border-pearl-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-midnight-800">
+                      Already paid? Enter 12-Digit UTR for instant activation:
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      required
+                      maxLength={18}
+                      placeholder="e.g. 431012345678"
+                      value={utrInput}
+                      onChange={(e) => setUtrInput(e.target.value.trim())}
+                      className="flex-1 px-3 py-2 rounded-xl border border-pearl-300 font-mono text-xs text-midnight-950 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="sm"
+                      isLoading={isVerifyingUtr}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white shrink-0"
+                    >
+                      Verify & Activate
+                    </Button>
+                  </div>
+                  <span className="text-[10px] text-midnight-400 font-mono block">
+                    Txn Ref: {upiOrder.merchantTransactionId}
+                  </span>
+                </form>
+              </>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

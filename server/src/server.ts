@@ -35,6 +35,7 @@ import codeExecutionRoutes from './routes/codeExecution.routes';
 import studentPortalRoutes from './routes/studentPortal.routes';
 import practiceRoutes from './routes/practice.routes';
 import aiAdvancedRoutes from './routes/aiAdvanced.routes';
+import upiPaymentRoutes from './routes/upiPayment.routes';
 
 const app = express();
 
@@ -104,6 +105,7 @@ app.use('/api/webhooks', webhookRoutes);
 app.use('/api/student-portal', studentPortalRoutes);
 app.use('/api/practice', practiceRoutes);
 app.use('/api/ai-advanced', aiAdvancedRoutes);
+app.use('/api/direct-upi', upiPaymentRoutes);
 
 // Centralized Error Handling
 
