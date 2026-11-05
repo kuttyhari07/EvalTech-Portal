@@ -212,3 +212,4 @@ export const CopilotAssistantDrawer: React.FC<CopilotAssistantDrawerProps> = ({
     </div>
   );
 };
+

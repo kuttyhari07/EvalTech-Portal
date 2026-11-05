@@ -243,3 +243,4 @@ export const VerifyCredential: React.FC = () => {
     </div>
   );
 };
+

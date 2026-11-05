@@ -308,3 +308,4 @@ export const SocraticVivaModal: React.FC<SocraticVivaModalProps> = ({
     </Modal>
   );
 };
+
