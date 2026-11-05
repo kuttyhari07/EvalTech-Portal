@@ -25,6 +25,7 @@ const ForgotPassword = React.lazy(() => import('../pages/auth/ForgotPassword').t
 const ResetPassword = React.lazy(() => import('../pages/auth/ResetPassword').then(m => ({ default: m.ResetPassword })));
 const VerifyEmail = React.lazy(() => import('../pages/auth/VerifyEmail').then(m => ({ default: m.VerifyEmail })));
 const JoinOrg = React.lazy(() => import('../pages/auth/JoinOrg').then(m => ({ default: m.JoinOrg })));
+const VerifyCredential = React.lazy(() => import('../pages/public/VerifyCredential').then(m => ({ default: m.VerifyCredential })));
 
 // Staff Pages
 const StaffOverview = React.lazy(() => import('../pages/staff/Overview').then(m => ({ default: m.StaffOverview })));
@@ -123,6 +124,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/exam/:code/submitted" element={<StudentExamSubmitted />} />
         <Route path="/exam/:code/quit" element={<StudentExamSubmitted />} />
         <Route path="/student/results" element={<StudentResultView />} />
+        <Route path="/verify-credential/:token" element={<VerifyCredential />} />
 
         {/* Staff / Teacher Dashboard */}
         <Route

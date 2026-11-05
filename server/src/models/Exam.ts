@@ -41,6 +41,14 @@ export interface IExam extends Document {
   sebConfigKey?: string;
   startPassword?: string;
   exitPassword?: string;
+  // Next-Gen Advanced Features (Staff Toggles)
+  examType?: 'standard' | 'bug_hunt';
+  enableSocraticViva?: boolean;
+  enableThoughtPlayback?: boolean;
+  enableMutationTesting?: boolean;
+  enableAiCopilot?: boolean;
+  enableFaceDetection?: boolean;
+  enableVoiceDetection?: boolean;
   liveBroadcasts: {
     message: string;
     timestamp: Date;
@@ -99,6 +107,14 @@ const examSchema = new Schema<IExam>(
     sebConfigKey: { type: String, trim: true },
     startPassword: { type: String, trim: true },
     exitPassword: { type: String, trim: true },
+    // Next-Gen Advanced Features (Staff Toggles)
+    examType: { type: String, enum: ['standard', 'bug_hunt'], default: 'standard' },
+    enableSocraticViva: { type: Boolean, default: false },
+    enableThoughtPlayback: { type: Boolean, default: false },
+    enableMutationTesting: { type: Boolean, default: false },
+    enableAiCopilot: { type: Boolean, default: false },
+    enableFaceDetection: { type: Boolean, default: false },
+    enableVoiceDetection: { type: Boolean, default: false },
     liveBroadcasts: [
       {
         message: { type: String, required: true },

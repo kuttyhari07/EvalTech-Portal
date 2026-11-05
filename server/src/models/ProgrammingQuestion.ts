@@ -41,6 +41,9 @@ export interface IProgrammingQuestion extends Document {
   scoringPolicy: ScoringPolicy;
   status: 'draft' | 'published' | 'archived';
   showTestCasesOnFail: 'none' | 'sample_only' | 'visible_only';
+  isBugHunt?: boolean;
+  incidentLogs?: string;
+  bugDescription?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -159,6 +162,9 @@ const programmingQuestionSchema = new Schema<IProgrammingQuestion>(
       enum: ['none', 'sample_only', 'visible_only'],
       default: 'visible_only',
     },
+    isBugHunt: { type: Boolean, default: false },
+    incidentLogs: { type: String },
+    bugDescription: { type: String },
   },
   { timestamps: true }
 );

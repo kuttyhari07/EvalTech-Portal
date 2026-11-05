@@ -142,7 +142,7 @@ export class AttemptController {
     const programmingQIds: mongoose.Types.ObjectId[] = [];
     for (const q of questions) {
       questionMap.set(q._id.toString(), q);
-      if (q.type === QUESTION_TYPES.PROGRAMMING) {
+      if (q.type === QUESTION_TYPES.PROGRAMMING || q.type === QUESTION_TYPES.DEBUGGING) {
         programmingQIds.push(q._id as mongoose.Types.ObjectId);
       }
     }
@@ -191,7 +191,7 @@ export class AttemptController {
       }
 
       let programmingDetails: any = undefined;
-      if (q.type === QUESTION_TYPES.PROGRAMMING) {
+      if (q.type === QUESTION_TYPES.PROGRAMMING || q.type === QUESTION_TYPES.DEBUGGING) {
         const pd = progDetailsMap.get(q._id.toString());
         if (pd) {
           programmingDetails = {
@@ -211,6 +211,9 @@ export class AttemptController {
             memoryLimitMb: pd.memoryLimitMb,
             allowedAttempts: pd.allowedAttempts,
             scoringPolicy: pd.scoringPolicy,
+            isBugHunt: Boolean(pd.isBugHunt || q.type === QUESTION_TYPES.DEBUGGING || exam.examType === 'bug_hunt'),
+            incidentLogs: pd.incidentLogs || '',
+            bugDescription: pd.bugDescription || '',
             sampleTestCases: sampleTestCasesMap.get(q._id.toString()) || [],
           };
         }
@@ -273,6 +276,13 @@ export class AttemptController {
         requireSEB: exam.requireSEB,
         requireStartPassword: Boolean(exam.startPassword),
         requireExitPassword: Boolean(exam.exitPassword),
+        examType: exam.examType || 'standard',
+        enableSocraticViva: Boolean(exam.enableSocraticViva),
+        enableThoughtPlayback: Boolean(exam.enableThoughtPlayback),
+        enableMutationTesting: Boolean(exam.enableMutationTesting),
+        enableAiCopilot: Boolean(exam.enableAiCopilot),
+        enableFaceDetection: Boolean(exam.enableFaceDetection),
+        enableVoiceDetection: Boolean(exam.enableVoiceDetection),
       },
       student: attempt.studentInfo,
       questions: preparedQuestions,

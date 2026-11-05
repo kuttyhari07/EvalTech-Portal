@@ -28,6 +28,12 @@ import {
   Search,
   Check,
   Download,
+  Brain,
+  Bug,
+  Camera,
+  Mic,
+  Bot,
+  Zap,
 } from 'lucide-react';
 
 export const StaffExamBuilder: React.FC = () => {
@@ -55,6 +61,15 @@ export const StaffExamBuilder: React.FC = () => {
   const [sebBrowserExamKey, setSebBrowserExamKey] = useState('');
   const [startPassword, setStartPassword] = useState('');
   const [exitPassword, setExitPassword] = useState('');
+
+  // Next-Gen AI & Advanced Proctoring Suite (Staff Toggles)
+  const [examType, setExamType] = useState<'standard' | 'bug_hunt'>('standard');
+  const [enableSocraticViva, setEnableSocraticViva] = useState(false);
+  const [enableThoughtPlayback, setEnableThoughtPlayback] = useState(false);
+  const [enableMutationTesting, setEnableMutationTesting] = useState(false);
+  const [enableAiCopilot, setEnableAiCopilot] = useState(false);
+  const [enableFaceDetection, setEnableFaceDetection] = useState(false);
+  const [enableVoiceDetection, setEnableVoiceDetection] = useState(false);
 
   // Selected questions for this exam
   const [examQuestions, setExamQuestions] = useState<{ question: QuestionItem; marks: number }[]>([]);
@@ -116,6 +131,13 @@ export const StaffExamBuilder: React.FC = () => {
             setSebBrowserExamKey(ex.sebBrowserExamKey || '');
             setStartPassword(ex.startPassword || '');
             setExitPassword(ex.exitPassword || '');
+            setExamType(ex.examType || 'standard');
+            setEnableSocraticViva(Boolean(ex.enableSocraticViva));
+            setEnableThoughtPlayback(Boolean(ex.enableThoughtPlayback));
+            setEnableMutationTesting(Boolean(ex.enableMutationTesting));
+            setEnableAiCopilot(Boolean(ex.enableAiCopilot));
+            setEnableFaceDetection(Boolean(ex.enableFaceDetection));
+            setEnableVoiceDetection(Boolean(ex.enableVoiceDetection));
 
             if (ex.questions && Array.isArray(ex.questions)) {
               const loadedQuestions = ex.questions
@@ -224,6 +246,13 @@ export const StaffExamBuilder: React.FC = () => {
         sebBrowserExamKey: requireSEB ? sebBrowserExamKey : undefined,
         startPassword: startPassword.trim() || undefined,
         exitPassword: exitPassword.trim() || undefined,
+        examType,
+        enableSocraticViva,
+        enableThoughtPlayback,
+        enableMutationTesting,
+        enableAiCopilot,
+        enableFaceDetection,
+        enableVoiceDetection,
       };
 
       if (isEditing) {
@@ -645,6 +674,162 @@ export const StaffExamBuilder: React.FC = () => {
                   onChange={(e) => setExitPassword(e.target.value)}
                   helperText="Required by invigilator to finalize/leave the exam early"
                 />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Next-Gen AI & Advanced Proctoring Suite */}
+          <Card className="border-indigo-100 shadow-md">
+            <CardHeader className="bg-gradient-to-r from-indigo-900 to-midnight-950 text-white rounded-t-xl py-3 px-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-indigo-300" />
+                <CardTitle className="text-sm font-bold text-white">Next-Gen AI & Proctoring Suite</CardTitle>
+              </div>
+              <CardDescription className="text-indigo-200 text-[11px]">
+                Turn on advanced anti-cheating, code viva, biometrics & AI features (Optional per exam).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 p-4 text-xs">
+              {/* Exam Track: Standard vs Bug Hunt */}
+              <div>
+                <label className="block text-xs font-semibold text-midnight-800 mb-1 flex items-center gap-1.5">
+                  <Bug className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Exam Track & Format</span>
+                </label>
+                <select
+                  value={examType}
+                  onChange={(e) => setExamType(e.target.value as any)}
+                  className="w-full rounded-lg border border-pearl-300 bg-white px-3 py-2 text-xs text-midnight-900 font-medium"
+                >
+                  <option value="standard">Standard Examination (MCQs & Coding)</option>
+                  <option value="bug_hunt">🐞 Bug Hunt Mode (Live Incident Debugging & Error Logs)</option>
+                </select>
+                <p className="text-[10px] text-midnight-500 mt-1">
+                  Bug Hunt mode presents candidate with broken micro-services, crash stack traces, and failing tests to fix.
+                </p>
+              </div>
+
+              {/* Feature 1: AI Socratic Viva */}
+              <div className="pt-2 border-t border-pearl-100">
+                <label className="flex items-start justify-between cursor-pointer gap-2">
+                  <div>
+                    <span className="font-semibold text-midnight-900 flex items-center gap-1.5">
+                      <Mic className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>AI Socratic Code Viva (Oral Defense)</span>
+                    </span>
+                    <p className="text-[10px] text-midnight-500 mt-0.5">
+                      AI prompts candidate with 2 targeted questions on submission to verify they authentically wrote their code.
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={enableSocraticViva}
+                    onChange={(e) => setEnableSocraticViva(e.target.checked)}
+                    className="w-4 h-4 text-indigo-brand rounded mt-0.5"
+                  />
+                </label>
+              </div>
+
+              {/* Feature 2: Thought Playback & Keystroke Biometrics */}
+              <div className="pt-2 border-t border-pearl-100">
+                <label className="flex items-start justify-between cursor-pointer gap-2">
+                  <div>
+                    <span className="font-semibold text-midnight-900 flex items-center gap-1.5">
+                      <Brain className="w-3.5 h-3.5 text-violet-600" />
+                      <span>Thought Playback & Keystroke Biometrics</span>
+                    </span>
+                    <p className="text-[10px] text-midnight-500 mt-0.5">
+                      Tracks typing cadence to detect copy-paste bursts & provides a 15s visual replay of code evolution for teachers.
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={enableThoughtPlayback}
+                    onChange={(e) => setEnableThoughtPlayback(e.target.checked)}
+                    className="w-4 h-4 text-indigo-brand rounded mt-0.5"
+                  />
+                </label>
+              </div>
+
+              {/* Feature 4: Adversarial AI Mutation Testing */}
+              <div className="pt-2 border-t border-pearl-100">
+                <label className="flex items-start justify-between cursor-pointer gap-2">
+                  <div>
+                    <span className="font-semibold text-midnight-900 flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Adversarial AI Mutation Testing</span>
+                    </span>
+                    <p className="text-[10px] text-midnight-500 mt-0.5">
+                      Synthesizes on-the-fly corner-case stress tests to defeat hardcoded solutions like <code>if (n==5) return 25</code>.
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={enableMutationTesting}
+                    onChange={(e) => setEnableMutationTesting(e.target.checked)}
+                    className="w-4 h-4 text-indigo-brand rounded mt-0.5"
+                  />
+                </label>
+              </div>
+
+              {/* Feature 5: AI Co-Pilot Exam Mode */}
+              <div className="pt-2 border-t border-pearl-100">
+                <label className="flex items-start justify-between cursor-pointer gap-2">
+                  <div>
+                    <span className="font-semibold text-midnight-900 flex items-center gap-1.5">
+                      <Bot className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>AI Co-Pilot (Pair Programming Mode)</span>
+                    </span>
+                    <p className="text-[10px] text-midnight-500 mt-0.5">
+                      Enables a constrained senior-architect assistant inside IDE. Grades student's architectural prompting skill.
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={enableAiCopilot}
+                    onChange={(e) => setEnableAiCopilot(e.target.checked)}
+                    className="w-4 h-4 text-indigo-brand rounded mt-0.5"
+                  />
+                </label>
+              </div>
+
+              {/* Proctoring Toggles: Face & Voice */}
+              <div className="pt-2 border-t border-pearl-100 space-y-2.5">
+                <span className="block text-[11px] font-bold text-midnight-700 uppercase tracking-wider">
+                  Camera & Audio Proctoring Toggles
+                </span>
+
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="text-midnight-800 flex items-center gap-1.5 font-medium">
+                    <Camera className="w-3.5 h-3.5 text-cyan-600" />
+                    <span>AI Face Tracking & Gaze Detection</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={enableFaceDetection}
+                    onChange={(e) => setEnableFaceDetection(e.target.checked)}
+                    className="w-4 h-4 text-indigo-brand rounded"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="text-midnight-800 flex items-center gap-1.5 font-medium">
+                    <Mic className="w-3.5 h-3.5 text-rose-600" />
+                    <span>AI Voice & Whispering Detection</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={enableVoiceDetection}
+                    onChange={(e) => setEnableVoiceDetection(e.target.checked)}
+                    className="w-4 h-4 text-indigo-brand rounded"
+                  />
+                </label>
+
+                {!enableFaceDetection && !enableVoiceDetection && (
+                  <p className="text-[10px] text-emerald-600 italic">
+                    Camera & mic access will remain disabled for this exam (no permissions requested).
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>

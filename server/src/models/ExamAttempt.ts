@@ -14,6 +14,29 @@ export interface IProgrammingDraft {
   lastSavedAt: Date;
 }
 
+export interface IKeystrokeSnapshot {
+  timestamp: Date;
+  questionId: string;
+  sourceLength: number;
+  wpm?: number;
+  pasteDetected?: boolean;
+  codeSnippet?: string;
+}
+
+export interface ICopilotLog {
+  timestamp: Date;
+  questionId: string;
+  prompt: string;
+  response: string;
+}
+
+export interface IVivaRecord {
+  question: string;
+  studentResponse: string;
+  score: number;
+  feedback: string;
+}
+
 export interface IExamAttempt extends Document {
   examId: mongoose.Types.ObjectId;
   studentId?: mongoose.Types.ObjectId;
@@ -33,6 +56,9 @@ export interface IExamAttempt extends Document {
   isSEB?: boolean;
   clientEvents: IClientEvent[];
   programmingDrafts: IProgrammingDraft[];
+  keystrokeSnapshots?: IKeystrokeSnapshot[];
+  copilotLogs?: ICopilotLog[];
+  vivaRecords?: IVivaRecord[];
   submissionToken: string; // Token used to verify idempotent submission
   createdAt: Date;
   updatedAt: Date;
@@ -82,6 +108,32 @@ const examAttemptSchema = new Schema<IExamAttempt>(
     isSEB: { type: Boolean, default: false },
     clientEvents: [clientEventSchema],
     programmingDrafts: [programmingDraftSchema],
+    keystrokeSnapshots: [
+      {
+        timestamp: { type: Date, default: Date.now },
+        questionId: { type: String, required: true },
+        sourceLength: { type: Number, default: 0 },
+        wpm: { type: Number, default: 0 },
+        pasteDetected: { type: Boolean, default: false },
+        codeSnippet: { type: String },
+      },
+    ],
+    copilotLogs: [
+      {
+        timestamp: { type: Date, default: Date.now },
+        questionId: { type: String, required: true },
+        prompt: { type: String, required: true },
+        response: { type: String, required: true },
+      },
+    ],
+    vivaRecords: [
+      {
+        question: { type: String, required: true },
+        studentResponse: { type: String, required: true },
+        score: { type: Number, default: 0 },
+        feedback: { type: String },
+      },
+    ],
     submissionToken: { type: String, required: true, unique: true, index: true },
   },
   { timestamps: true }

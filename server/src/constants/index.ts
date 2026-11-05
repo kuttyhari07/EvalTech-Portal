@@ -102,6 +102,7 @@ export const QUESTION_TYPES = {
   LONG_ANSWER: 'long_answer',
   CODE: 'code',
   PROGRAMMING: 'programming',
+  DEBUGGING: 'debugging',
 } as const;
 
 export type QuestionType = (typeof QUESTION_TYPES)[keyof typeof QUESTION_TYPES];

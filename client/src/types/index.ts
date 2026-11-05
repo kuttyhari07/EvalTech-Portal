@@ -133,7 +133,8 @@ export type QuestionType =
   | 'short_answer'
   | 'long_answer'
   | 'code'
-  | 'programming';
+  | 'programming'
+  | 'debugging';
 
 export type ProgrammingLanguage = 'c' | 'cpp' | 'java' | 'python';
 
@@ -190,6 +191,9 @@ export interface ProgrammingQuestionDetail {
   allowedAttempts: number;
   scoringPolicy: 'all_or_nothing' | 'weighted';
   status: 'draft' | 'published' | 'archived';
+  isBugHunt?: boolean;
+  incidentLogs?: string;
+  bugDescription?: string;
   testCases?: ProgrammingTestCaseItem[];
 }
 
@@ -308,6 +312,13 @@ export interface ExamItem {
   status: 'draft' | 'published' | 'archived';
   isPublicLinkEnabled: boolean;
   requireSEB?: boolean;
+  examType?: 'standard' | 'bug_hunt';
+  enableSocraticViva?: boolean;
+  enableThoughtPlayback?: boolean;
+  enableMutationTesting?: boolean;
+  enableAiCopilot?: boolean;
+  enableFaceDetection?: boolean;
+  enableVoiceDetection?: boolean;
   startPassword?: string;
   exitPassword?: string;
   requireStartPassword?: boolean;

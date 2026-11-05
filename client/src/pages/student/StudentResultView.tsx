@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../..
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
+import { Modal } from '../../components/ui/Modal';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
 import {
   GraduationCap,
@@ -21,6 +22,11 @@ import {
   Check,
   BarChart2,
   TrendingUp,
+  ShieldCheck,
+  Github,
+  Share2,
+  Download,
+  ExternalLink,
 } from 'lucide-react';
 
 export const StudentResultView: React.FC = () => {
@@ -45,6 +51,12 @@ export const StudentResultView: React.FC = () => {
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
+  // Portfolio Export & Skill DNA
+  const [showPortfolioModal, setShowPortfolioModal] = useState(false);
+  const [portfolioData, setPortfolioData] = useState<any>(null);
+  const [loadingPortfolio, setLoadingPortfolio] = useState(false);
+  const [portfolioCopied, setPortfolioCopied] = useState(false);
 
   const fetchResult = async (userEmail: string, code: string) => {
     if (!userEmail || !code) return;
@@ -146,6 +158,47 @@ export const StudentResultView: React.FC = () => {
     } finally {
       setLoadingAnalytics(false);
     }
+  };
+
+  const handleExportPortfolio = async () => {
+    if (!result?.resultId) return;
+    setLoadingPortfolio(true);
+    try {
+      const res = await api.get(`/ai-advanced/results/${result.resultId}/portfolio`);
+      setPortfolioData(res.data?.data);
+      setShowPortfolioModal(true);
+    } catch (err: any) {
+      alert(err.message || 'Failed to generate GitHub Portfolio bundle');
+    } finally {
+      setLoadingPortfolio(false);
+    }
+  };
+
+  const handleShareLinkedIn = () => {
+    const certUrl = result?.portfolioToken
+      ? `${window.location.origin}/verify-credential/${result.portfolioToken}`
+      : window.location.href;
+    const url = encodeURIComponent(certUrl);
+    const title = encodeURIComponent(
+      `Officially Certified in ${result?.examTitle || 'Software Engineering'} on EvalTech!`
+    );
+    window.open(
+      `https://www.linkedin.com/sharing/share-offsite/?url=${url}&title=${title}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+  };
+
+  const handleDownloadFile = (fileName: string, content: string) => {
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -272,6 +325,101 @@ export const StudentResultView: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Verified Skill DNA & Socratic Viva Summary */}
+                {result.skillDna && result.skillDna.length > 0 && (
+                  <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-900 text-white shadow-xl space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-indigo-800/60">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
+                          <Brain className="w-4 h-4 text-indigo-300" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-extrabold tracking-tight">Verified Skill DNA & Cognitive Profile</h4>
+                          <span className="text-[11px] text-indigo-300 font-mono">Validated by Autonomous Scoring & AI Defense</span>
+                        </div>
+                      </div>
+                      {result.portfolioToken && (
+                        <Link
+                          to={`/verify-credential/${result.portfolioToken}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-lg border border-emerald-500/30 hover:bg-emerald-500/20 transition-colors"
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          View Certified Badge
+                        </Link>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {result.skillDna.map((cat: any, idx: number) => (
+                        <div key={idx} className="p-3 rounded-xl bg-slate-950/60 border border-indigo-800/40 space-y-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-semibold text-slate-200">{cat.category}</span>
+                            <span className="font-mono font-bold text-indigo-300">{cat.score}%</span>
+                          </div>
+                          <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 rounded-full"
+                              style={{ width: `${cat.score}%` }}
+                            />
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono">
+                            Top {100 - (cat.percentile || 90)}% candidate percentile
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {result.socraticViva && (
+                      <div className="p-3 rounded-xl bg-indigo-900/40 border border-indigo-700/50 flex items-start gap-3 text-xs">
+                        <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-white">Socratic Oral Defense Score:</span>
+                            <span className="font-mono font-bold text-emerald-300">
+                              {result.socraticViva.vivaScore ?? result.socraticViva.score}%
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-800 font-mono text-indigo-200 uppercase">
+                              {result.socraticViva.conceptualClarity || 'verified'}
+                            </span>
+                          </div>
+                          {result.socraticViva.feedback && (
+                            <p className="text-[11px] text-slate-300 mt-1 italic leading-relaxed">
+                              "{result.socraticViva.feedback}"
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action buttons: GitHub Portfolio & LinkedIn */}
+                    <div className="flex flex-wrap items-center gap-2 pt-2">
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        onClick={handleExportPortfolio}
+                        isLoading={loadingPortfolio}
+                        leftIcon={<Github className="w-3.5 h-3.5" />}
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white"
+                      >
+                        🚀 Export to GitHub Portfolio
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleShareLinkedIn}
+                        leftIcon={<Share2 className="w-3.5 h-3.5 text-[#0A66C2]" />}
+                        className="border-indigo-700/60 text-slate-200 hover:bg-indigo-900/60"
+                      >
+                        💼 Share Credential to LinkedIn
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Skill Gap & Topic Mastery Analytics Toggle */}
                 <div className="pt-2">
@@ -606,6 +754,104 @@ export const StudentResultView: React.FC = () => {
             </Card>
           </div>
         )}
+
+        {/* GitHub Portfolio Bundle Modal */}
+        <Modal
+          isOpen={showPortfolioModal}
+          onClose={() => setShowPortfolioModal(false)}
+          title="🚀 Verified GitHub Portfolio Exporter"
+          size="lg"
+        >
+          {portfolioData && (
+            <div className="space-y-4 text-xs">
+              <div className="p-3.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 flex items-start gap-3">
+                <Github className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-bold text-xs">Ready-to-Push Verified Repository Bundle</h4>
+                  <p className="text-[11px] text-indigo-800 mt-0.5 leading-relaxed">
+                    This bundle includes your verified algorithmic code solutions, complexity benchmarks, and a rich README with an official tamper-proof credential badge link.
+                  </p>
+                </div>
+              </div>
+
+              {/* Solution Files List */}
+              {portfolioData.files && portfolioData.files.length > 0 && (
+                <div className="space-y-2">
+                  <span className="font-bold text-midnight-900 block font-mono">
+                    Generated Code Files ({portfolioData.files.length})
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {portfolioData.files.map((f: any, idx: number) => (
+                      <div
+                        key={idx}
+                        className="p-2.5 rounded-lg border border-pearl-200 bg-pearl-50 flex items-center justify-between"
+                      >
+                        <span className="font-mono font-bold text-midnight-800 truncate">{f.fileName}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDownloadFile(f.fileName, f.code)}
+                          leftIcon={<Download className="w-3 h-3 text-indigo-brand" />}
+                          className="h-6 text-[10px] px-2"
+                        >
+                          Download
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* README Preview & Copy */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-midnight-900 font-mono">Repository README.md</span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownloadFile('README.md', portfolioData.readmeContent)}
+                      leftIcon={<Download className="w-3 h-3" />}
+                      className="h-7 text-[10px] px-2"
+                    >
+                      Download README.md
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(portfolioData.readmeContent);
+                        setPortfolioCopied(true);
+                        setTimeout(() => setPortfolioCopied(false), 2000);
+                      }}
+                      leftIcon={portfolioCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      className="h-7 text-[10px] px-2"
+                    >
+                      {portfolioCopied ? 'Copied' : 'Copy Markdown'}
+                    </Button>
+                  </div>
+                </div>
+                <pre className="p-3.5 rounded-xl bg-midnight-950 text-indigo-200 font-mono text-[11px] overflow-x-auto border border-midnight-800 max-h-64 leading-relaxed">
+                  <code>{portfolioData.readmeContent}</code>
+                </pre>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowPortfolioModal(false)}
+                >
+                  Done
+                </Button>
+              </div>
+            </div>
+          )}
+        </Modal>
       </div>
     </div>
   );

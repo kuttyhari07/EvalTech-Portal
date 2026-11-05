@@ -37,6 +37,28 @@ export interface IExamResult extends Document {
   programmingMaxScore: number;
   evaluationStatus: 'completed' | 'pending_evaluation' | 'partially_evaluated';
   questionBreakdown: IQuestionResult[];
+  socraticViva?: {
+    enabled: boolean;
+    score: number;
+    questions: {
+      question: string;
+      studentResponse: string;
+      score: number;
+      feedback: string;
+    }[];
+  };
+  keystrokeMetrics?: {
+    score: number;
+    wpm: number;
+    pasteCount: number;
+    verdict: string;
+  };
+  skillDna?: {
+    category: string;
+    score: number;
+    percentile: number;
+  }[];
+  portfolioToken?: string;
   isReleased: boolean;
   releasedAt?: Date;
   emailSent: boolean;
@@ -92,6 +114,32 @@ const examResultSchema = new Schema<IExamResult>(
       index: true,
     },
     questionBreakdown: [questionResultSchema],
+    socraticViva: {
+      enabled: { type: Boolean, default: false },
+      score: { type: Number, default: 0 },
+      questions: [
+        {
+          question: { type: String },
+          studentResponse: { type: String },
+          score: { type: Number, default: 0 },
+          feedback: { type: String },
+        },
+      ],
+    },
+    keystrokeMetrics: {
+      score: { type: Number, default: 100 },
+      wpm: { type: Number, default: 0 },
+      pasteCount: { type: Number, default: 0 },
+      verdict: { type: String, default: 'Natural cadence' },
+    },
+    skillDna: [
+      {
+        category: { type: String },
+        score: { type: Number },
+        percentile: { type: Number },
+      },
+    ],
+    portfolioToken: { type: String, unique: true, sparse: true },
     isReleased: { type: Boolean, default: false, index: true },
     releasedAt: { type: Date },
     emailSent: { type: Boolean, default: false },

@@ -5,6 +5,7 @@ import { sendSuccess, sendError } from '../utils/response';
 import { EmailService } from '../services/email.service';
 import { recordAuditLog } from '../utils/audit';
 import { EvaluationService } from '../services/evaluation.service';
+import { AIAdvancedService } from '../services/aiAdvanced.service';
 
 export class ResultController {
   static async getExamResults(req: AuthRequest, res: Response): Promise<void> {
@@ -184,7 +185,25 @@ export class ResultController {
       return;
     }
 
+    if (!result.skillDna || result.skillDna.length === 0) {
+      const progPercentage = result.programmingMaxScore
+        ? Math.round(((result.programmingScore || 0) / result.programmingMaxScore) * 100)
+        : result.percentage;
+      result.skillDna = AIAdvancedService.calculateSkillDna(
+        result.percentage,
+        progPercentage,
+        result.socraticViva?.score,
+        result.keystrokeMetrics?.score || 100
+      );
+    }
+    if (!result.portfolioToken) {
+      result.portfolioToken = `EVT-DNA-${result._id.toString().slice(-6).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+      await result.save();
+    }
+
     sendSuccess(res, {
+      resultId: result._id,
+      examCode: exam.examCode,
       examTitle: exam.title,
       examSubject: exam.subject,
       student: result.studentInfo,
@@ -197,6 +216,10 @@ export class ResultController {
       evaluationStatus: result.evaluationStatus || 'completed',
       evaluatedAt: result.evaluatedAt,
       questionBreakdown: exam.showExplanationsAfterSubmission ? result.questionBreakdown : undefined,
+      skillDna: result.skillDna,
+      portfolioToken: result.portfolioToken,
+      socraticViva: result.socraticViva,
+      keystrokeMetrics: result.keystrokeMetrics,
     });
   }
 

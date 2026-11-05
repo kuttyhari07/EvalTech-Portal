@@ -34,6 +34,7 @@ import programmingQuestionRoutes from './routes/programmingQuestion.routes';
 import codeExecutionRoutes from './routes/codeExecution.routes';
 import studentPortalRoutes from './routes/studentPortal.routes';
 import practiceRoutes from './routes/practice.routes';
+import aiAdvancedRoutes from './routes/aiAdvanced.routes';
 
 const app = express();
 
@@ -102,6 +103,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/student-portal', studentPortalRoutes);
 app.use('/api/practice', practiceRoutes);
+app.use('/api/ai-advanced', aiAdvancedRoutes);
 
 // Centralized Error Handling
 

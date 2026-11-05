@@ -66,6 +66,13 @@ export class ExamController {
       sebConfigKey: data.sebConfigKey?.trim() || undefined,
       startPassword: data.startPassword?.trim() || undefined,
       exitPassword: data.exitPassword?.trim() || undefined,
+      examType: data.examType || 'standard',
+      enableSocraticViva: Boolean(data.enableSocraticViva),
+      enableThoughtPlayback: Boolean(data.enableThoughtPlayback),
+      enableMutationTesting: Boolean(data.enableMutationTesting),
+      enableAiCopilot: Boolean(data.enableAiCopilot),
+      enableFaceDetection: Boolean(data.enableFaceDetection),
+      enableVoiceDetection: Boolean(data.enableVoiceDetection),
     });
 
     await recordAuditLog({

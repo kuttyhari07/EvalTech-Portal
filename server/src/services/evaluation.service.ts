@@ -148,7 +148,8 @@ export class EvaluationService {
           break;
         }
 
-        case QUESTION_TYPES.PROGRAMMING: {
+        case QUESTION_TYPES.PROGRAMMING:
+        case QUESTION_TYPES.DEBUGGING: {
           totalProgrammingMaxMarks += maxMarks;
 
           // Find the latest scored submission for this attempt and question
@@ -215,7 +216,7 @@ export class EvaluationService {
         questionText: question.text,
         questionType: question.type,
         studentAnswer: studentVal,
-        correctAnswer: question.type === QUESTION_TYPES.PROGRAMMING ? undefined : question.correctAnswers,
+        correctAnswer: (question.type === QUESTION_TYPES.PROGRAMMING || question.type === QUESTION_TYPES.DEBUGGING) ? undefined : question.correctAnswers,
         marksObtained,
         maxMarks,
         isCorrect,

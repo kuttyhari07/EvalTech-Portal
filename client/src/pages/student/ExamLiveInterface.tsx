@@ -12,6 +12,8 @@ import { ProgrammingLanguage } from '../../types';
 import { useAIProctor } from '../../hooks/useAIProctor';
 import { AIProctorHUD } from '../../components/proctor/AIProctorHUD';
 import { MalpracticeModal } from '../../components/proctor/MalpracticeModal';
+import { SocraticVivaModal } from '../../components/exam/SocraticVivaModal';
+import { CopilotAssistantDrawer } from '../../components/exam/CopilotAssistantDrawer';
 import {
   Clock,
   CheckCircle2,
@@ -30,6 +32,11 @@ import {
   Lock,
   Wifi,
   WifiOff,
+  Bot,
+  Bug,
+  Sparkles,
+  Brain,
+  Lightbulb,
 } from 'lucide-react';
 
 export const StudentExamLive: React.FC = () => {
@@ -62,6 +69,12 @@ export const StudentExamLive: React.FC = () => {
   const [isDraftSaving, setIsDraftSaving] = useState(false);
   const [lastDraftSavedTime, setLastDraftSavedTime] = useState<string>('Draft saved');
   const [mobileTab, setMobileTab] = useState<'problem' | 'code' | 'console'>('code');
+
+  // Next-Gen Feature States
+  const [isVivaModalOpen, setIsVivaModalOpen] = useState(false);
+  const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+  const [lastKeystrokeSent, setLastKeystrokeSent] = useState<number>(Date.now());
+  const [mutationResultsMap, setMutationResultsMap] = useState<Record<string, any>>({});
 
   const [draftSaveTimeoutRef] = [useRef<any>(null)];
 
@@ -112,6 +125,11 @@ export const StudentExamLive: React.FC = () => {
   );
 
   // AI Face & Voice Proctor Hook
+  const isProctoringEnabled = Boolean(
+    session &&
+    (session.exam?.enableFaceDetection || session.exam?.enableVoiceDetection)
+  );
+
   const {
     videoRef,
     bindVideoElement,
@@ -134,7 +152,7 @@ export const StudentExamLive: React.FC = () => {
   } = useAIProctor({
     attemptId,
     submissionToken,
-    enabled: Boolean(session),
+    enabled: isProctoringEnabled,
     maxStrikes: 3,
     onAutoSubmit: handleAutoSubmit,
   });
@@ -158,7 +176,7 @@ export const StudentExamLive: React.FC = () => {
       const initialCodes: Record<string, Record<string, string>> = {};
 
       (parsed.questions || []).forEach((q: any) => {
-        if (q.type === 'programming' && q.programmingDetails) {
+        if ((q.type === 'programming' || q.type === 'debugging') && q.programmingDetails) {
           const supported = (q.programmingDetails.supportedLanguages || [
             'python',
             'java',
@@ -471,12 +489,32 @@ export const StudentExamLive: React.FC = () => {
     persistAnswer(questionId, answers[questionId], nextVal);
   };
 
-  // Programming: Code Editor change handler with debounced autosave
+  // Programming & Debugging: Code Editor change handler with debounced autosave
   const handleCodeChange = (newCode: string) => {
     const currentQ = session?.questions?.[currentIndex];
-    if (!currentQ || currentQ.type !== 'programming') return;
+    if (!currentQ || (currentQ.type !== 'programming' && currentQ.type !== 'debugging')) return;
     const qId = currentQ.id;
     const lang = selectedLanguage[qId] || 'python';
+
+    // Keystroke Telemetry for Thought Playback
+    if (session?.exam?.enableThoughtPlayback && attemptId) {
+      const now = Date.now();
+      if (now - lastKeystrokeSent > 15000) {
+        setLastKeystrokeSent(now);
+        const prevLen = codeDrafts[qId]?.[lang]?.length || 0;
+        const delta = Math.abs(newCode.length - prevLen);
+        const pasteDetected = delta > 50;
+        api
+          .post(`/ai-advanced/attempts/${attemptId}/keystroke-snapshot`, {
+            questionId: qId,
+            sourceLength: newCode.length,
+            wpm: 55,
+            pasteDetected,
+            codeSnippet: newCode.slice(0, 2000),
+          })
+          .catch(() => {});
+      }
+    }
 
     setCodeDrafts((prev) => ({
       ...prev,
@@ -554,7 +592,7 @@ export const StudentExamLive: React.FC = () => {
   // Practice "Run Code"
   const handleRunCode = async () => {
     const currentQ = session?.questions?.[currentIndex];
-    if (!currentQ || currentQ.type !== 'programming') return;
+    if (!currentQ || (currentQ.type !== 'programming' && currentQ.type !== 'debugging')) return;
     if (isRunningCode || isSubmittingCode) return;
 
     const qId = currentQ.id;
@@ -573,9 +611,28 @@ export const StudentExamLive: React.FC = () => {
         customInput: customIn,
       });
 
-      setRunResultsMap((prev) => ({ ...prev, [qId]: res.data?.data }));
+      const runData = res.data?.data;
+      setRunResultsMap((prev) => ({ ...prev, [qId]: runData }));
       setLastActionMap((prev) => ({ ...prev, [qId]: 'run' }));
       setMobileTab('console');
+
+      // Feature 4: Real-time Adversarial Mutation Stress Test
+      if (session?.exam?.enableMutationTesting && code.trim().length > 30) {
+        api
+          .post('/ai-advanced/mutation-test', {
+            problemTitle: currentQ.programmingDetails?.title || 'Challenge',
+            problemStatement: currentQ.programmingDetails?.problemStatement || '',
+            studentCode: code,
+            language: lang,
+          })
+          .then((mRes) => {
+            const mut = mRes.data?.data;
+            if (mut) {
+              setMutationResultsMap((prev) => ({ ...prev, [qId]: mut }));
+            }
+          })
+          .catch(() => {});
+      }
     } catch (err: any) {
       alert(err.message || 'Run code failed');
     } finally {
@@ -586,7 +643,7 @@ export const StudentExamLive: React.FC = () => {
   // Scored "Submit Solution"
   const handleSubmitSolution = async () => {
     const currentQ = session?.questions?.[currentIndex];
-    if (!currentQ || currentQ.type !== 'programming') return;
+    if (!currentQ || (currentQ.type !== 'programming' && currentQ.type !== 'debugging')) return;
     if (isRunningCode || isSubmittingCode) return;
 
     const qId = currentQ.id;
@@ -636,7 +693,26 @@ export const StudentExamLive: React.FC = () => {
     }
   };
 
-  const handleManualSubmit = async () => {
+  const handleInitiateSubmit = () => {
+    setIsSubmitModalOpen(false);
+
+    // Check if AI Socratic Viva is enabled and candidate wrote code
+    if (session?.exam?.enableSocraticViva) {
+      const codingQ = session.questions?.find(
+        (q: any) =>
+          (q.type === 'programming' || q.type === 'debugging') &&
+          codeDrafts[q.id]
+      );
+      if (codingQ) {
+        setIsVivaModalOpen(true);
+        return;
+      }
+    }
+
+    handleFinalSubmit();
+  };
+
+  const handleFinalSubmit = async () => {
     setIsSubmitting(true);
     try {
       const res = await api.post(`/attempts/${attemptId}/submit`, {
@@ -692,6 +768,20 @@ export const StudentExamLive: React.FC = () => {
     if (typeof a === 'object' && a.submitted !== undefined) return a.submitted;
     return Array.isArray(a) ? a.length > 0 : String(a).trim() !== '';
   }).length;
+
+  const primaryCodingQ = session?.questions?.find(
+    (q: any) =>
+      (q.type === 'programming' || q.type === 'debugging') &&
+      codeDrafts[q.id]
+  );
+  const vivaCode = primaryCodingQ
+    ? (selectedLanguage[primaryCodingQ.id]
+        ? codeDrafts[primaryCodingQ.id]?.[selectedLanguage[primaryCodingQ.id]]
+        : Object.values(codeDrafts[primaryCodingQ.id] || {})[0]) || ''
+    : '';
+  const vivaLang = primaryCodingQ
+    ? selectedLanguage[primaryCodingQ.id] || 'python'
+    : 'python';
 
   return (
     <div className="relative min-h-screen bg-pearl-50 dark:bg-midnight-950 text-midnight-900 dark:text-pearl-100 flex flex-col selection:bg-indigo-brand selection:text-white">
@@ -814,6 +904,19 @@ export const StudentExamLive: React.FC = () => {
             <Clock className={`w-3.5 h-3.5 ${isUrgent ? 'text-rose-400' : 'text-indigo-glow'}`} />
             <span>{timeFormatted}</span>
           </div>
+
+          {/* AI Co-Pilot Mentor Button (Staff Toggle) */}
+          {session?.exam?.enableAiCopilot && (
+            <button
+              type="button"
+              onClick={() => setIsCopilotOpen(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-md transition-all cursor-pointer"
+              title="Open AI Co-Pilot Pair-Programming Mentor"
+            >
+              <Bot className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">AI Co-Pilot</span>
+            </button>
+          )}
 
           <Button
             variant="electric"
@@ -946,6 +1049,9 @@ export const StudentExamLive: React.FC = () => {
                 memoryLimitMb={currentQ.programmingDetails?.memoryLimitMb}
                 submissions={currentSubmissions}
                 onCopyPrevented={(action) => handlePreventQuestionCopy(null, action)}
+                isBugHunt={session.exam?.examType === 'bug_hunt' || Boolean(currentQ.programmingDetails?.isBugHunt) || currentQ.type === 'debugging'}
+                incidentLogs={currentQ.programmingDetails?.incidentLogs}
+                bugDescription={currentQ.programmingDetails?.bugDescription}
               />
             </div>
 
@@ -1384,7 +1490,7 @@ export const StudentExamLive: React.FC = () => {
             <Button
               variant="primary"
               size="sm"
-              onClick={handleManualSubmit}
+              onClick={handleInitiateSubmit}
               isLoading={isSubmitting}
             >
               Submit Now
@@ -1393,32 +1499,62 @@ export const StudentExamLive: React.FC = () => {
         </div>
       </Modal>
 
-      {/* 📹 AI Face & Voice Proctor Live PIP HUD */}
-      <AIProctorHUD
-        videoRef={videoRef}
-        bindVideoElement={bindVideoElement}
-        isReady={isProctorReady}
-        hasPermissions={hasProctorPermissions}
-        permissionError={proctorPermissionError}
-        faceStatus={faceStatus}
-        voiceStatus={voiceStatus}
-        faceCount={faceCount}
-        audioLevel={audioLevel}
-        motionLevel={motionLevel}
-        faceCenter={faceCenter}
-        warningCount={proctorWarningCount}
-        maxStrikes={maxStrikes}
-        onRetryPermissions={startProctoring}
-      />
+      {/* 📹 AI Face & Voice Proctor Live PIP HUD (Only if enabled by staff) */}
+      {isProctoringEnabled && (
+        <AIProctorHUD
+          videoRef={videoRef}
+          bindVideoElement={bindVideoElement}
+          isReady={isProctorReady}
+          hasPermissions={hasProctorPermissions}
+          permissionError={proctorPermissionError}
+          faceStatus={faceStatus}
+          voiceStatus={voiceStatus}
+          faceCount={faceCount}
+          audioLevel={audioLevel}
+          motionLevel={motionLevel}
+          faceCenter={faceCenter}
+          warningCount={proctorWarningCount}
+          maxStrikes={maxStrikes}
+          onRetryPermissions={startProctoring}
+        />
+      )}
 
-      {/* ⚠️ AI Malpractice Warning & Auto-Submit Modal (3 Strikes Rule) */}
-      <MalpracticeModal
-        violation={activeWarning}
-        warningCount={proctorWarningCount}
-        maxStrikes={maxStrikes}
-        isTerminated={isSubmittingTerminated}
-        onDismiss={dismissWarning}
-      />
+      {/* ⚠️ AI Malpractice Warning & Auto-Submit Modal (Only if proctoring active) */}
+      {isProctoringEnabled && (
+        <MalpracticeModal
+          violation={activeWarning}
+          warningCount={proctorWarningCount}
+          maxStrikes={maxStrikes}
+          isTerminated={isSubmittingTerminated}
+          onDismiss={dismissWarning}
+        />
+      )}
+
+      {/* 🎙️ Feature 1: AI Socratic Viva Code Defense Modal */}
+      {session?.exam?.enableSocraticViva && (
+        <SocraticVivaModal
+          isOpen={isVivaModalOpen}
+          onComplete={handleFinalSubmit}
+          attemptId={attemptId || ''}
+          problemTitle={primaryCodingQ?.programmingDetails?.title || 'Programming Challenge'}
+          problemStatement={primaryCodingQ?.programmingDetails?.problemStatement || ''}
+          studentCode={vivaCode}
+          language={vivaLang}
+        />
+      )}
+
+      {/* 🤖 Feature 5: AI Co-Pilot Pair-Programming Assistant Drawer */}
+      {session?.exam?.enableAiCopilot && (
+        <CopilotAssistantDrawer
+          isOpen={isCopilotOpen}
+          onClose={() => setIsCopilotOpen(false)}
+          attemptId={attemptId || ''}
+          questionId={currentQ?.id || ''}
+          problemStatement={currentQ?.programmingDetails?.problemStatement || currentQ?.text || ''}
+          currentCode={currentSourceCode}
+          language={currentLang}
+        />
+      )}
     </div>
   );
 };

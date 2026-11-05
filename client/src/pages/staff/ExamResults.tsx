@@ -31,8 +31,10 @@ import {
   Download,
   Printer,
   Radio,
+  Activity,
 } from 'lucide-react';
 import { LiveExamMonitorModal } from '../../components/proctor/LiveExamMonitorModal';
+import { ThoughtPlaybackModal } from '../../components/exam/ThoughtPlaybackModal';
 
 export const StaffExamResults: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -58,6 +60,10 @@ export const StaffExamResults: React.FC = () => {
   const [gradingMarks, setGradingMarks] = useState<number>(0);
   const [gradingFeedback, setGradingFeedback] = useState<string>('');
   const [savingGrade, setSavingGrade] = useState(false);
+
+  // Thought Playback Telemetry Modal
+  const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null);
+  const [showThoughtPlayback, setShowThoughtPlayback] = useState(false);
 
   const handleExportCsv = async () => {
     if (!selectedExamId) return;
@@ -417,21 +423,38 @@ export const StaffExamResults: React.FC = () => {
                           {new Date(res.evaluatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            leftIcon={<Edit3 className="w-3.5 h-3.5" />}
-                            onClick={() => {
-                              setActiveGradingResult(res);
-                              if (res.questionBreakdown && res.questionBreakdown.length > 0) {
-                                setGradingQuestionId(res.questionBreakdown[0].questionId);
-                                setGradingMarks(res.questionBreakdown[0].marksObtained);
-                                setGradingFeedback(res.questionBreakdown[0].feedback || '');
-                              }
-                            }}
-                          >
-                            Inspect Code
-                          </Button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            {res.attemptId && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                leftIcon={<Activity className="w-3.5 h-3.5 text-indigo-brand" />}
+                                onClick={() => {
+                                  setSelectedAttemptId(res.attemptId);
+                                  setShowThoughtPlayback(true);
+                                }}
+                                title="Review typing cadence and copy-paste replay scrubber"
+                                className="text-xs text-indigo-600 hover:text-indigo-800"
+                              >
+                                Playback
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              leftIcon={<Edit3 className="w-3.5 h-3.5" />}
+                              onClick={() => {
+                                setActiveGradingResult(res);
+                                if (res.questionBreakdown && res.questionBreakdown.length > 0) {
+                                  setGradingQuestionId(res.questionBreakdown[0].questionId);
+                                  setGradingMarks(res.questionBreakdown[0].marksObtained);
+                                  setGradingFeedback(res.questionBreakdown[0].feedback || '');
+                                }
+                              }}
+                            >
+                              Inspect Code
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -556,6 +579,18 @@ export const StaffExamResults: React.FC = () => {
           examId={selectedExamId}
           examTitle={examMeta?.title || 'Active Examination'}
           onClose={() => setIsMonitoringOpen(false)}
+        />
+      )}
+
+      {/* Thought Playback Telemetry Modal */}
+      {showThoughtPlayback && selectedAttemptId && (
+        <ThoughtPlaybackModal
+          isOpen={showThoughtPlayback}
+          onClose={() => {
+            setShowThoughtPlayback(false);
+            setSelectedAttemptId(null);
+          }}
+          attemptId={selectedAttemptId}
         />
       )}
     </div>

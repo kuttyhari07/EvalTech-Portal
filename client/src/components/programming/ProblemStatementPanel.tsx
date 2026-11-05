@@ -11,6 +11,8 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
+  Terminal,
+  Bug,
 } from 'lucide-react';
 
 interface ProblemStatementPanelProps {
@@ -37,6 +39,9 @@ interface ProblemStatementPanelProps {
   memoryLimitMb?: number;
   submissions?: any[];
   onCopyPrevented?: (action: string) => void;
+  isBugHunt?: boolean;
+  incidentLogs?: string;
+  bugDescription?: string;
 }
 
 export const ProblemStatementPanel: React.FC<ProblemStatementPanelProps> = ({
@@ -58,8 +63,13 @@ export const ProblemStatementPanel: React.FC<ProblemStatementPanelProps> = ({
   memoryLimitMb = 256,
   submissions = [],
   onCopyPrevented,
+  isBugHunt = false,
+  incidentLogs,
+  bugDescription,
 }) => {
-  const [activeTab, setActiveTab] = useState<'problem' | 'samples' | 'history'>('problem');
+  const [activeTab, setActiveTab] = useState<'problem' | 'samples' | 'history' | 'logs'>(
+    isBugHunt && incidentLogs ? 'logs' : 'problem'
+  );
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const handleCopyText = (id: string, text: string) => {
@@ -100,6 +110,11 @@ export const ProblemStatementPanel: React.FC<ProblemStatementPanelProps> = ({
               Q{questionNumber} of {totalQuestions}
             </span>
             {getDifficultyBadge()}
+            {isBugHunt && (
+              <span className="text-xs font-mono font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/80 px-2 py-0.5 rounded border border-rose-300 dark:border-rose-800 flex items-center gap-1">
+                <Bug className="w-3 h-3" /> Bug Hunt
+              </span>
+            )}
             <span className="text-xs font-mono font-bold text-midnight-600 dark:text-pearl-400">
               {marks} Mark{marks > 1 ? 's' : ''}
             </span>
@@ -133,6 +148,20 @@ export const ProblemStatementPanel: React.FC<ProblemStatementPanelProps> = ({
             <FileText className="w-3.5 h-3.5" />
             Problem
           </button>
+          {isBugHunt && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('logs')}
+              className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                activeTab === 'logs'
+                  ? 'bg-rose-600 text-white shadow-subtle'
+                  : 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 hover:bg-rose-100'
+              }`}
+            >
+              <Terminal className="w-3.5 h-3.5" />
+              Incident Logs
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setActiveTab('samples')}
@@ -174,6 +203,27 @@ export const ProblemStatementPanel: React.FC<ProblemStatementPanelProps> = ({
       >
         {activeTab === 'problem' && (
           <>
+            {isBugHunt && (
+              <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/60 space-y-2">
+                <div className="flex items-center gap-2 text-rose-700 dark:text-rose-400 font-bold text-xs uppercase tracking-wider font-mono">
+                  <Bug className="w-4 h-4" />
+                  Production Outage & Bug Hunt Scenario
+                </div>
+                <p className="text-xs text-rose-900 dark:text-rose-200 leading-relaxed font-sans">
+                  {bugDescription || "A severe production regression has caused this service to fail. Inspect the incident logs and failing assertions, isolate the defect, and fix the code."}
+                </p>
+                {incidentLogs && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('logs')}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-bold text-rose-600 dark:text-rose-400 underline hover:text-rose-700 mt-1"
+                  >
+                    View Live Crash Stack Trace &rarr;
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Problem Statement */}
             <div className="space-y-3">
               <h4 className="text-xs font-bold text-indigo-brand dark:text-indigo-glow uppercase tracking-wider font-mono">
@@ -351,6 +401,44 @@ export const ProblemStatementPanel: React.FC<ProblemStatementPanelProps> = ({
                 );
               })
             )}
+          </div>
+        )}
+        {activeTab === 'logs' && (
+          <div className="space-y-4">
+            <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider font-mono">
+                  Simulated Production Incident Environment
+                </h4>
+                <p className="text-xs text-midnight-700 dark:text-pearl-300 mt-1">
+                  The logs below were captured from the production cluster right when the outage occurred. Examine the stack traces, exception messages, and failed assertions to locate and fix the defect.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-bold text-midnight-600 dark:text-pearl-400">
+                  Live Stack Trace & Crash Logs
+                </span>
+                {incidentLogs && (
+                  <button
+                    type="button"
+                    onClick={() => handleCopyText('incident_logs', incidentLogs)}
+                    className="text-[11px] text-midnight-500 dark:text-pearl-400 hover:text-indigo-brand flex items-center gap-1 font-mono"
+                  >
+                    {copiedId === 'incident_logs' ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                    Copy Trace
+                  </button>
+                )}
+              </div>
+              <pre className="p-4 rounded-xl bg-midnight-950 text-rose-300 font-mono text-xs overflow-x-auto border border-midnight-800 leading-relaxed shadow-inner max-h-[450px]">
+                <code>
+                  {incidentLogs || `[CRITICAL_OUTAGE] Unhandled Exception at Runtime\nException: InvalidState / BoundsViolation in worker pipeline.\nTarget: Production microservice crashed with exit code 1.\nRoot cause: Undetected edge case in core logic.`}
+                </code>
+              </pre>
+            </div>
           </div>
         )}
       </div>
