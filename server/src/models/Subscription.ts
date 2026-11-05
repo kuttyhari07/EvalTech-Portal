@@ -24,7 +24,7 @@ const subscriptionSchema = new Schema<ISubscription>(
     targetId: { type: Schema.Types.ObjectId, required: true, index: true },
     planId: { type: Schema.Types.ObjectId, ref: 'SubscriptionPlan', required: true },
     tier: { type: String, enum: Object.values(SUBSCRIPTION_TIERS), required: true },
-    studentCapacity: { type: Number, required: true, default: 10 },
+    studentCapacity: { type: Number, required: true, default: 999999 },
     billingCycle: { type: String, enum: ['monthly', 'yearly'], default: 'monthly' },
     status: {
       type: String,

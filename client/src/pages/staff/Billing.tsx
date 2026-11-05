@@ -24,6 +24,8 @@ import {
   Shield,
   Layers,
   Award,
+  Infinity,
+  Flame,
 } from 'lucide-react';
 
 export const StaffBilling: React.FC = () => {
@@ -77,7 +79,7 @@ export const StaffBilling: React.FC = () => {
         razorpaySignature: 'sandbox_verified_signature',
       });
 
-      setUpgradeSuccess(`Successfully upgraded to ${plan.name} Plan! Your student capacity and Next-Gen features are active.`);
+      setUpgradeSuccess(`Successfully upgraded to ${plan.name}! Your Next-Gen AI exam allocation is immediately active.`);
       fetchData();
     } catch (err: any) {
       alert(err.message || 'Upgrade failed.');
@@ -88,10 +90,6 @@ export const StaffBilling: React.FC = () => {
 
   if (loading) return <LoadingSkeleton count={4} className="h-32" />;
 
-  const capacityPercent = capacity
-    ? Math.min(100, Math.round((capacity.currentUsage / (capacity.maxCapacity || 1)) * 100))
-    : 0;
-
   const isProOrOrg = capacity?.tier === 'pro' || capacity?.tier === 'organization';
 
   return (
@@ -101,14 +99,14 @@ export const StaffBilling: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-2xl font-extrabold text-midnight-950 tracking-tight">
-              Subscription & Enterprise Capacity Engine
+              Subscription & Next-Gen AI Engine
             </h2>
             <Badge variant="purple" className="text-[10px] font-mono uppercase">
-              B2B Institutional Suite
+              Zero Student Caps
             </Badge>
           </div>
           <p className="text-xs text-midnight-600 mt-1">
-            Manage your institution's active student quota, Next-Gen AI features, and Razorpay billing invoices.
+            All plans include unlimited candidate seats. Experience AI Socratic Vivas, Thought Playback, and Proctoring on every tier.
           </p>
         </div>
 
@@ -144,59 +142,60 @@ export const StaffBilling: React.FC = () => {
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="purple" className="bg-white/10 text-indigo-glow border-none uppercase font-mono tracking-wider">
-                    {capacity.tier} Tier Plan
+                    {capacity.tier === 'organization'
+                      ? 'Campus Enterprise'
+                      : capacity.tier === 'pro'
+                      ? 'Pro Educator Tier'
+                      : capacity.tier === 'plus'
+                      ? 'On-Demand Pass Tier'
+                      : 'Free Explorer Tier'}
                   </Badge>
                   <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1 font-mono">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Active Status
                   </span>
                 </div>
-                <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                  {capacity.maxCapacity} Max Active Students
+                <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
+                  <Infinity className="w-7 h-7 text-indigo-300" />
+                  Unlimited Student Seats
                 </h3>
                 <div className="pt-1">
                   {isProOrOrg ? (
                     <span className="inline-flex items-center gap-1.5 text-xs text-indigo-300 font-mono font-bold bg-indigo-500/20 px-2.5 py-1 rounded-lg border border-indigo-400/30">
                       <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                      Next-Gen AI & Proctoring Suite Active
+                      UNLIMITED Next-Gen AI Exams & Proctoring Active
+                    </span>
+                  ) : capacity.tier === 'plus' ? (
+                    <span className="inline-flex items-center gap-1.5 text-xs text-amber-300 font-mono font-bold bg-amber-500/20 px-2.5 py-1 rounded-lg border border-amber-400/30">
+                      <Zap className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                      On-Demand AI Exam Passes Active
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 text-xs text-pearl-300 font-mono bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">
-                      <Lock className="w-3.5 h-3.5 text-pearl-400 shrink-0" />
-                      Standard Exams (Upgrade to Pro for AI Viva & Proctoring)
+                    <span className="inline-flex items-center gap-1.5 text-xs text-pearl-200 font-mono bg-white/10 px-2.5 py-1 rounded-lg border border-white/15">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                      Free Explorer: 2 Next-Gen AI Exams / mo (Unlimited standard exams)
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* Middle Column: Utilization Progress Bar */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs font-mono font-bold text-pearl-200">
-                  <span>Student Capacity Quota</span>
-                  <span>
-                    {capacity.currentUsage} / {capacity.maxCapacity} Slots ({capacityPercent}%)
-                  </span>
+              {/* Middle Column: Active Cohort Insights */}
+              <div className="space-y-2 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                <span className="text-[11px] font-mono text-pearl-300 block uppercase">
+                  Active Enrollment Footprint
+                </span>
+                <div className="text-xl font-extrabold text-white font-mono flex items-center gap-2">
+                  <Users className="w-5 h-5 text-indigo-glow" />
+                  <span>{capacity.currentUsage} Candidates Enrolled</span>
                 </div>
-                <div className="w-full bg-midnight-800 rounded-full h-3 overflow-hidden p-0.5 border border-midnight-700">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      capacityPercent >= 90
-                        ? 'bg-rose-500'
-                        : capacityPercent >= 75
-                        ? 'bg-amber-400'
-                        : 'bg-gradient-to-r from-indigo-500 to-indigo-300'
-                    }`}
-                    style={{ width: `${capacityPercent}%` }}
-                  />
-                </div>
-                <p className="text-[11px] text-pearl-300 font-mono">
-                  {capacity.remainingCapacity} available student seat{capacity.remainingCapacity === 1 ? '' : 's'} remaining in your cohort.
+                <p className="text-[11px] text-pearl-300 leading-relaxed">
+                  No artificial student restrictions. You can host examinations for classes of any size without seat overage charges.
                 </p>
               </div>
 
-              {/* Right Column: Renewal Info */}
+              {/* Right Column: Renewal & Subscription Status */}
               <div className="text-left md:text-right space-y-1">
                 <span className="text-[10px] uppercase font-bold text-pearl-400 font-mono block">
-                  Subscription Period End
+                  Current Billing Cycle
                 </span>
                 <span className="text-sm font-semibold text-white flex items-center md:justify-end gap-1.5 font-mono">
                   <Calendar className="w-4 h-4 text-indigo-glow" />
@@ -222,10 +221,10 @@ export const StaffBilling: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h3 className="text-xl font-extrabold text-midnight-950 tracking-tight">
-              Select Your Institution Tier
+              Select Your Next-Gen AI Allowance Tier
             </h3>
             <p className="text-xs text-midnight-600 mt-0.5">
-              Choose the plan that fits your active student volume and AI proctoring requirements.
+              All plans include complete Next-Gen features. Upgrade to unlock unlimited AI exams and institutional scaling.
             </p>
           </div>
 
@@ -267,6 +266,7 @@ export const StaffBilling: React.FC = () => {
             const isCurrent = capacity?.tier === p.tier;
             const isPro = p.tier === 'pro';
             const isOrg = p.tier === 'organization';
+            const isPass = p.tier === 'plus';
             const price = billingCycle === 'yearly' ? p.priceYearly : p.priceMonthly;
             const monthlyEquivalent = billingCycle === 'yearly' ? Math.round(p.priceYearly / 12) : p.priceMonthly;
 
@@ -275,17 +275,23 @@ export const StaffBilling: React.FC = () => {
                 key={p._id}
                 className={`rounded-3xl border flex flex-col justify-between transition-all duration-300 relative ${
                   isPro
-                    ? 'border-indigo-500 shadow-xl ring-2 ring-indigo-500/50 bg-gradient-to-b from-indigo-50/50 via-white to-white dark:from-indigo-950/20 dark:to-midnight-950'
+                    ? 'border-indigo-500 shadow-2xl ring-2 ring-indigo-500/50 bg-gradient-to-b from-indigo-50/50 via-white to-white dark:from-indigo-950/20 dark:to-midnight-950'
                     : isCurrent
                     ? 'border-indigo-400 bg-indigo-50/20 shadow-subtle'
                     : 'border-pearl-200 bg-white hover:border-pearl-300 hover:shadow-subtle'
                 }`}
               >
-                {/* Header Badge */}
+                {/* Ribbon Badges */}
                 {isPro && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-[10px] font-mono font-bold uppercase tracking-widest px-3 py-1 rounded-full shadow-md flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-amber-300" />
-                    Most Popular Choice
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-[10px] font-mono font-bold uppercase tracking-widest px-3.5 py-1 rounded-full shadow-md flex items-center gap-1">
+                    <Flame className="w-3 h-3 text-amber-300" />
+                    Unlimited Powerhouse
+                  </div>
+                )}
+
+                {isPass && (
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-amber-600 text-white text-[10px] font-mono font-bold uppercase tracking-widest px-3 py-1 rounded-full shadow-md">
+                    Pay-As-You-Go
                   </div>
                 )}
 
@@ -298,7 +304,7 @@ export const StaffBilling: React.FC = () => {
                 <div className="p-6 space-y-4">
                   <div className="flex items-center justify-between">
                     <Badge
-                      variant={isPro ? 'purple' : isOrg ? 'default' : 'info'}
+                      variant={isPro ? 'purple' : isOrg ? 'default' : isPass ? 'warning' : 'info'}
                       className="text-[11px] font-mono uppercase font-bold"
                     >
                       {p.name}
@@ -311,17 +317,18 @@ export const StaffBilling: React.FC = () => {
                   </div>
 
                   <div>
-                    <h4 className="text-xl font-extrabold text-midnight-950 tracking-tight">
-                      {p.maxStudents} Students Quota
+                    <h4 className="text-xl font-extrabold text-midnight-950 tracking-tight flex items-center gap-1.5">
+                      <Infinity className="w-5 h-5 text-indigo-brand" />
+                      Unlimited Students
                     </h4>
                     <p className="text-[11px] text-midnight-500 mt-0.5">
                       {p.tier === 'free'
-                        ? 'For individual tutors & classrooms'
+                        ? 'Taste the full magic: 2 Next-Gen AI exams / mo'
                         : p.tier === 'plus'
-                        ? 'For growing departments & coaching centers'
+                        ? '5 AI Exam passes with no monthly lock-in'
                         : p.tier === 'pro'
-                        ? 'Next-Gen AI & full proctoring for colleges'
-                        : 'Campus-wide enterprise multi-staff pool'}
+                        ? 'Unlimited AI vivas, playback & proctoring'
+                        : 'Full campus license with custom college branding'}
                     </p>
                   </div>
 
@@ -331,11 +338,13 @@ export const StaffBilling: React.FC = () => {
                       <span className="text-3xl font-extrabold text-midnight-950 font-mono">
                         {price === 0 ? '₹0' : `₹${monthlyEquivalent.toLocaleString()}`}
                       </span>
-                      <span className="text-xs text-midnight-600 ml-1 font-mono">/month</span>
+                      <span className="text-xs text-midnight-600 ml-1 font-mono">
+                        {isPass ? '/pass pack' : '/month'}
+                      </span>
                     </div>
                     {billingCycle === 'yearly' && price > 0 ? (
                       <span className="text-[11px] text-emerald-600 font-mono block mt-0.5">
-                        Billed annually as ₹{price.toLocaleString()} (2 mos free)
+                        Billed annually as ₹{price.toLocaleString()} (Save 20%)
                       </span>
                     ) : (
                       <span className="text-[11px] text-midnight-400 font-mono block mt-0.5">
@@ -354,7 +363,8 @@ export const StaffBilling: React.FC = () => {
                         feat.includes('Mutation') ||
                         feat.includes('Co-Pilot') ||
                         feat.includes('Proctoring') ||
-                        feat.includes('Skill DNA');
+                        feat.includes('Unlimited students') ||
+                        feat.includes('UNLIMITED');
 
                       return (
                         <div key={i} className="flex items-start gap-2">
@@ -391,32 +401,32 @@ export const StaffBilling: React.FC = () => {
         </div>
       </div>
 
-      {/* Feature Comparison & Institutional Guarantee */}
+      {/* The EvalTech Unlimited Promise */}
       <div className="p-6 rounded-3xl bg-pearl-100/60 border border-pearl-200 space-y-4">
         <h4 className="text-sm font-extrabold text-midnight-950 flex items-center gap-2">
           <Shield className="w-4 h-4 text-indigo-brand" />
-          Enterprise Institutional Guarantee & Capacity Architecture
+          The EvalTech "Taste the Magic" Architectural Commitment
         </h4>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
           <div className="p-4 rounded-2xl bg-white border border-pearl-200 space-y-1">
-            <span className="font-bold text-midnight-900 block font-mono">Distinct Student Seats</span>
+            <span className="font-bold text-midnight-900 block font-mono">Zero Student Seat Restrictions</span>
             <p className="text-midnight-600 leading-relaxed text-[11px]">
-              Capacity limits count unique student email addresses across all your classes. One student enrolled in 5 classes counts as 1 slot.
+              We believe education should never be bounded by cohort size. Whether you teach 25 students or 2,500, your classroom is never blocked.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white border border-pearl-200 space-y-1">
+            <span className="font-bold text-midnight-900 block font-mono">Full Features for Everyone</span>
+            <p className="text-midnight-600 leading-relaxed text-[11px]">
+              Every teacher gets access to AI Socratic Viva, Thought Playback, and Face/Voice Proctoring. You upgrade only when you need unlimited volume.
             </p>
           </div>
 
           <div className="p-4 rounded-2xl bg-white border border-pearl-200 space-y-1">
             <span className="font-bold text-midnight-900 block font-mono">Instant Gateway Activation</span>
             <p className="text-midnight-600 leading-relaxed text-[11px]">
-              Payments through Razorpay activate instantly. No waiting period; capacity expansion and Next-Gen AI features unlock immediately.
-            </p>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-white border border-pearl-200 space-y-1">
-            <span className="font-bold text-midnight-900 block font-mono">Flexible Upgrades</span>
-            <p className="text-midnight-600 leading-relaxed text-[11px]">
-              Upgrade anytime when your cohort grows. Previous plan balances are adjusted smoothly to give you uninterrupted exam continuity.
+              Razorpay payments activate immediately via UPI, NetBanking, and Cards. Upgrades apply instantly without restarting sessions.
             </p>
           </div>
         </div>

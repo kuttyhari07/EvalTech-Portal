@@ -10,6 +10,8 @@ export interface ISubscriptionPlan extends Document {
   priceYearly: number;
   features: string[];
   aiQuestionsPerMonth: number;
+  aiExamsPerMonth?: number;
+  aiVivaPerMonth?: number;
   isActive: boolean;
   isPopular?: boolean;
   highlightBadge?: string;
@@ -23,11 +25,13 @@ const subscriptionPlanSchema = new Schema<ISubscriptionPlan>(
     name: { type: String, required: true, trim: true },
     slug: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
     tier: { type: String, enum: Object.values(SUBSCRIPTION_TIERS), required: true, index: true },
-    maxStudents: { type: Number, required: true, default: 10 },
+    maxStudents: { type: Number, required: true, default: 999999 },
     priceMonthly: { type: Number, required: true, default: 0 },
     priceYearly: { type: Number, required: true, default: 0 },
     features: [{ type: String }],
     aiQuestionsPerMonth: { type: Number, default: 0 },
+    aiExamsPerMonth: { type: Number, default: -1 },
+    aiVivaPerMonth: { type: Number, default: -1 },
     isActive: { type: Boolean, default: true, index: true },
     isPopular: { type: Boolean, default: false },
     highlightBadge: { type: String },

@@ -47,6 +47,8 @@ export interface SubscriptionPlan {
   priceYearly: number;
   features: string[];
   aiQuestionsPerMonth: number;
+  aiExamsPerMonth?: number;
+  aiVivaPerMonth?: number;
   isActive: boolean;
   isPopular?: boolean;
   highlightBadge?: string;

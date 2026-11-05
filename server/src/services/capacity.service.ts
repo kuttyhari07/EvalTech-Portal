@@ -58,6 +58,11 @@ export class CapacityService {
       subscription.planId = freePlan as any;
     }
 
+    if (subscription && subscription.studentCapacity < 999999) {
+      subscription.studentCapacity = 999999;
+      await subscription.save();
+    }
+
     return subscription;
   }
 
@@ -110,21 +115,16 @@ export class CapacityService {
   ): Promise<CapacityCheckResult> {
     const subscription = await this.getActiveSubscription(targetType, targetId);
     const currentUsage = await this.getUsageCount(targetType, targetId);
-    const maxCapacity = subscription.studentCapacity;
-    const remaining = Math.max(0, maxCapacity - currentUsage);
-
-    const allowed = currentUsage + incomingCount <= maxCapacity;
+    const maxCapacity = 999999;
+    const remaining = 999999;
 
     return {
-      allowed,
+      allowed: true,
       maxCapacity,
       currentUsage,
       remainingCapacity: remaining,
       tier: subscription.tier,
       status: subscription.status,
-      message: allowed
-        ? undefined
-        : `Student capacity limit reached (${currentUsage}/${maxCapacity}). Please upgrade your plan to add more students.`,
     };
   }
 
