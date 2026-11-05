@@ -49,6 +49,7 @@ export const StaffBilling: React.FC = () => {
   const [isVerifyingUtr, setIsVerifyingUtr] = useState(false);
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [pollingStatus, setPollingStatus] = useState<string>('waiting');
+  const [qrViewMode, setQrViewMode] = useState<'dynamic' | 'paytm'>('dynamic');
 
   const fetchData = async () => {
     try {
@@ -683,25 +684,91 @@ export const StaffBilling: React.FC = () => {
               </div>
             ) : (
               <>
+                {/* Beneficiary Header */}
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-pearl-50 border border-pearl-200">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-extrabold flex items-center justify-center text-xs shadow-sm">
+                      P
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5 font-bold text-midnight-950 text-xs">
+                        <span>Hariharan Gopalakrishnan</span>
+                        <ShieldCheck className="w-3.5 h-3.5 text-blue-600 fill-blue-100" />
+                      </div>
+                      <span className="text-[10px] text-midnight-500 font-mono">Paytm Verified Merchant • 0% Commission</span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full font-mono">
+                    Direct Bank
+                  </span>
+                </div>
+
+                {/* QR Display Mode Switcher */}
+                <div className="flex items-center p-1 rounded-2xl bg-pearl-100 border border-pearl-200">
+                  <button
+                    type="button"
+                    onClick={() => setQrViewMode('dynamic')}
+                    className={`flex-1 text-center py-1.5 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      qrViewMode === 'dynamic'
+                        ? 'bg-white text-midnight-950 shadow-subtle'
+                        : 'text-midnight-600 hover:text-midnight-900'
+                    }`}
+                  >
+                    <Zap className="w-3 h-3 text-amber-500" />
+                    <span>Dynamic QR (Auto ₹{upiOrder.amount.toLocaleString()})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQrViewMode('paytm')}
+                    className={`flex-1 text-center py-1.5 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      qrViewMode === 'paytm'
+                        ? 'bg-blue-600 text-white shadow-subtle'
+                        : 'text-midnight-600 hover:text-midnight-900'
+                    }`}
+                  >
+                    <QrCode className="w-3 h-3" />
+                    <span>Paytm Standee QR</span>
+                  </button>
+                </div>
+
                 {/* QR Code and Instructions */}
                 <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-pearl-200 shadow-sm space-y-3">
-                  <img
-                    src={upiOrder.qrCodeUrl}
-                    alt="Scan UPI QR"
-                    className="w-48 h-48 rounded-xl border border-pearl-200 shadow-subtle p-2 bg-white"
-                  />
-                  <div className="text-center space-y-1">
+                  {qrViewMode === 'dynamic' ? (
+                    <div className="flex flex-col items-center space-y-2">
+                      <img
+                        src={upiOrder.qrCodeUrl}
+                        alt="Scan Dynamic UPI QR"
+                        className="w-48 h-48 rounded-xl border border-pearl-200 shadow-subtle p-2 bg-white"
+                      />
+                      <span className="text-[10px] text-indigo-600 font-mono font-semibold bg-indigo-50 px-2 py-0.5 rounded">
+                        ✓ Amount ₹{upiOrder.amount.toLocaleString()} is pre-filled in your UPI app
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center space-y-2">
+                      <img
+                        src="/paytm-qr.jpg"
+                        alt="Official Paytm QR"
+                        className="w-52 max-h-64 object-contain rounded-xl border border-pearl-200 shadow-subtle p-1 bg-white"
+                      />
+                      <span className="text-[10px] text-midnight-600 font-mono">
+                        Enter Amount: <strong className="text-midnight-950 font-bold">₹{upiOrder.amount.toLocaleString()}</strong> in Paytm
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="text-center space-y-1 w-full">
                     <span className="text-[11px] text-midnight-600 font-medium">
                       Scan with GPay, PhonePe, Paytm, CRED, or BHIM
                     </span>
                     <div className="flex items-center justify-center gap-1.5 pt-1">
                       <span className="font-mono font-bold text-midnight-900 bg-pearl-100 px-2 py-0.5 rounded text-xs select-all">
-                        {upiOrder.upiVpa}
+                        {upiOrder.upiVpa || 'paytm.s2wg913@pty'}
                       </span>
                       <button
                         type="button"
                         onClick={() => {
-                          navigator.clipboard.writeText(upiOrder.upiVpa);
+                          navigator.clipboard.writeText(upiOrder.upiVpa || 'paytm.s2wg913@pty');
                           setCopiedUpi(true);
                           setTimeout(() => setCopiedUpi(false), 2000);
                         }}
@@ -719,7 +786,7 @@ export const StaffBilling: React.FC = () => {
                     className="sm:hidden inline-flex items-center gap-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2.5 rounded-xl shadow-md w-full justify-center transition-colors"
                   >
                     <Smartphone className="w-4 h-4" />
-                    Open In PhonePe / GPay (Pay Now)
+                    Open In Paytm / PhonePe (Pay Now)
                   </a>
                 </div>
 

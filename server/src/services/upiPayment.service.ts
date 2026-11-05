@@ -26,8 +26,8 @@ export class UpiPaymentService {
     const merchantTransactionId = `EVT-${Date.now().toString(36).toUpperCase()}-${Math.floor(
       Math.random() * 900 + 100
     )}`;
-    const vpa = config.UPI_MERCHANT_VPA || 'evaltech@okhdfcbank';
-    const merchantName = config.UPI_MERCHANT_NAME || 'EvalTech Enterprise';
+    const vpa = config.UPI_MERCHANT_VPA || 'paytm.s2wg913@pty';
+    const merchantName = config.UPI_MERCHANT_NAME || 'Hariharan Gopalakrishnan';
     const receipt = `rcpt_upi_${Date.now()}`;
     const invoiceNumber = `INV-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
 
@@ -231,3 +231,4 @@ export class UpiPaymentService {
     return subscription;
   }
 }
+

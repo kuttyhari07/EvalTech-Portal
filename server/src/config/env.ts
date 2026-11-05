@@ -31,8 +31,8 @@ const envSchema = z.object({
   RAZORPAY_WEBHOOK_SECRET: z.string().default('whsec_placeholder_secret'),
 
   // Direct Merchant UPI Configuration (PhonePe Business / Paytm / BharatPe / Custom Webhook)
-  UPI_MERCHANT_VPA: z.string().default('evaltech@okhdfcbank'),
-  UPI_MERCHANT_NAME: z.string().default('EvalTech Enterprise'),
+  UPI_MERCHANT_VPA: z.string().default('paytm.s2wg913@pty'),
+  UPI_MERCHANT_NAME: z.string().default('Hariharan Gopalakrishnan'),
   UPI_WEBHOOK_SECRET: z.string().default('evaltech_upi_secret_token_2026'),
 
   // Email
