@@ -324,32 +324,104 @@ export const StaffBilling: React.FC = () => {
                     <p className="text-[11px] text-midnight-500 mt-0.5">
                       {p.tier === 'free'
                         ? 'Taste the full magic: 2 Next-Gen AI exams / mo'
-                        : p.tier === 'plus'
-                        ? '5 AI Exam passes with no monthly lock-in'
-                        : p.tier === 'pro'
+                        : isPass
+                        ? billingCycle === 'yearly'
+                          ? '5 AI Exam passes with no monthly lock-in'
+                          : '1 Single AI Exam pass with no monthly lock-in'
+                        : isPro
                         ? 'Unlimited AI vivas, playback & proctoring'
                         : 'Full campus license with custom college branding'}
                     </p>
                   </div>
 
-                  {/* Price */}
-                  <div className="pt-2 border-t border-pearl-100">
-                    <div className="flex items-baseline">
-                      <span className="text-3xl font-extrabold text-midnight-950 font-mono">
-                        {price === 0 ? '₹0' : `₹${monthlyEquivalent.toLocaleString()}`}
-                      </span>
-                      <span className="text-xs text-midnight-600 ml-1 font-mono">
-                        {isPass ? '/pass pack' : '/month'}
-                      </span>
-                    </div>
-                    {billingCycle === 'yearly' && price > 0 ? (
-                      <span className="text-[11px] text-emerald-600 font-mono block mt-0.5">
-                        Billed annually as ₹{price.toLocaleString()} (Save 20%)
-                      </span>
+                  {/* Price Section */}
+                  <div className="pt-2 border-t border-pearl-100 min-h-[72px] flex flex-col justify-center">
+                    {p.tier === 'free' ? (
+                      <div>
+                        <div className="flex items-baseline">
+                          <span className="text-3xl font-extrabold text-midnight-950 font-mono">₹0</span>
+                          <span className="text-xs text-midnight-600 ml-1 font-mono">/lifetime</span>
+                        </div>
+                        <span className="text-[11px] text-emerald-600 font-mono block mt-0.5">
+                          100% Free Forever • No card needed
+                        </span>
+                      </div>
+                    ) : isPass ? (
+                      <div>
+                        {billingCycle === 'yearly' ? (
+                          <div>
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-3xl font-extrabold text-midnight-950 font-mono">₹799</span>
+                              <span className="text-xs text-midnight-600 font-mono">/5 passes</span>
+                              <span className="text-[11px] text-midnight-400 line-through font-mono ml-1">₹995</span>
+                            </div>
+                            <span className="text-[11px] text-emerald-600 font-bold font-mono block mt-0.5">
+                              ₹160/exam • Save ₹196 (Never expires)
+                            </span>
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="flex items-baseline">
+                              <span className="text-3xl font-extrabold text-midnight-950 font-mono">₹199</span>
+                              <span className="text-xs text-midnight-600 ml-1 font-mono">/single pass</span>
+                            </div>
+                            <span className="text-[11px] text-midnight-500 font-mono block mt-0.5">
+                              Pay per exam • Never expires
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ) : isPro ? (
+                      <div>
+                        {billingCycle === 'yearly' ? (
+                          <div>
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-3xl font-extrabold text-midnight-950 font-mono">₹14,990</span>
+                              <span className="text-xs text-midnight-600 font-mono">/year</span>
+                              <span className="text-[11px] text-midnight-400 line-through font-mono ml-1">₹17,988</span>
+                            </div>
+                            <span className="text-[11px] text-emerald-600 font-bold font-mono block mt-0.5">
+                              ₹1,249/mo effective • 2 Mos Free (Save ₹2,998)
+                            </span>
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="flex items-baseline">
+                              <span className="text-3xl font-extrabold text-midnight-950 font-mono">₹1,499</span>
+                              <span className="text-xs text-midnight-600 ml-1 font-mono">/month</span>
+                            </div>
+                            <span className="text-[11px] text-midnight-500 font-mono block mt-0.5">
+                              Billed monthly • Cancel anytime
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     ) : (
-                      <span className="text-[11px] text-midnight-400 font-mono block mt-0.5">
-                        {price === 0 ? 'Free Forever trial' : 'Billed monthly'}
-                      </span>
+                      /* Organization / Campus Enterprise */
+                      <div>
+                        {billingCycle === 'yearly' ? (
+                          <div>
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-3xl font-extrabold text-midnight-950 font-mono">₹49,990</span>
+                              <span className="text-xs text-midnight-600 font-mono">/year</span>
+                              <span className="text-[11px] text-midnight-400 line-through font-mono ml-1">₹59,988</span>
+                            </div>
+                            <span className="text-[11px] text-emerald-600 font-bold font-mono block mt-0.5">
+                              ₹4,166/mo effective • 2 Mos Free (Save ₹9,998)
+                            </span>
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="flex items-baseline">
+                              <span className="text-3xl font-extrabold text-midnight-950 font-mono">₹4,999</span>
+                              <span className="text-xs text-midnight-600 ml-1 font-mono">/month</span>
+                            </div>
+                            <span className="text-[11px] text-midnight-500 font-mono block mt-0.5">
+                              Billed monthly • Institution license
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
 
@@ -392,7 +464,15 @@ export const StaffBilling: React.FC = () => {
                     isLoading={upgradingPlanId === p._id}
                     onClick={() => handleUpgrade(p)}
                   >
-                    {isCurrent ? 'Current Plan' : `Upgrade to ${p.name}`}
+                    {isCurrent
+                      ? 'Current Plan'
+                      : isPass
+                      ? billingCycle === 'yearly'
+                        ? 'Buy 5-Pass Pack (₹799)'
+                        : 'Buy Single Pass (₹199)'
+                      : billingCycle === 'yearly'
+                      ? `Upgrade to ${p.name} (₹${p.priceYearly.toLocaleString()}/yr)`
+                      : `Upgrade to ${p.name} (₹${p.priceMonthly.toLocaleString()}/mo)`}
                   </Button>
                 </div>
               </div>
