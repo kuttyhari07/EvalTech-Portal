@@ -44,7 +44,7 @@ async function cleanDatabase() {
 
   if (!superAdmin) {
     const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash('Kuttyharihk@220429', salt);
+    const passwordHash = await bcrypt.hash(process.env.INITIAL_ADMIN_PASSWORD || 'Admin@EvalTech2025!', salt);
     superAdmin = await User.create({
       name: 'Super Admin',
       email: 'evaltech32@gmail.com',

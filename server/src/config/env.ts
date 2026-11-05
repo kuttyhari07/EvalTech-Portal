@@ -9,7 +9,7 @@ dotenv.config();
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('production'),
   PORT: z.string().default('5000').transform((val) => parseInt(val, 10)),
-  MONGODB_URI: z.string().default('mongodb+srv://evaltech32_db_user:Kuttyharihk%400429@cluster0.dx5zfz0.mongodb.net/evaltech?retryWrites=true&w=majority'),
+  MONGODB_URI: z.string().default('mongodb://localhost:27017/evaltech'),
   JWT_SECRET: z.string().default('evaltech-super-secret-jwt-key-2025-secure-production-ready'),
   JWT_EXPIRES_IN: z.string().default('7d'),
   CLIENT_URL: z.string().default('https://eval-tech-portal.vercel.app').transform((val) => {

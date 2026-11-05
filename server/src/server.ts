@@ -134,12 +134,12 @@ async function seedSystemDefaults(): Promise<void> {
       {
         email: 'evaltech32@gmail.com',
         name: 'Super Admin',
-        password: 'Kuttyharihk@220429',
+        password: process.env.INITIAL_ADMIN_PASSWORD || 'Admin@EvalTech2025!',
       },
       {
         email: 'admin@evaltech.io',
         name: 'Super Admin (Backup)',
-        password: 'Admin@EvalTech2025!',
+        password: process.env.INITIAL_ADMIN_PASSWORD || 'Admin@EvalTech2025!',
       },
     ];
 
