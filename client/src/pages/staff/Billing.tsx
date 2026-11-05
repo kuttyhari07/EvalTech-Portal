@@ -13,6 +13,17 @@ import {
   ShieldCheck,
   Calendar,
   AlertTriangle,
+  Sparkles,
+  Brain,
+  Lock,
+  Building,
+  GraduationCap,
+  Users,
+  Check,
+  HelpCircle,
+  Shield,
+  Layers,
+  Award,
 } from 'lucide-react';
 
 export const StaffBilling: React.FC = () => {
@@ -61,12 +72,12 @@ export const StaffBilling: React.FC = () => {
       // In sandbox / simulated mode or when Razorpay script is not in browser
       // Complete verification directly
       const verifyRes = await api.post('/subscriptions/verify', {
-        razorpayOrderId: orderData.orderId,
+        razorpayOrderId: orderData?.orderId || `order_${Date.now()}`,
         razorpayPaymentId: `pay_${Date.now()}`,
         razorpaySignature: 'sandbox_verified_signature',
       });
 
-      setUpgradeSuccess(`Successfully upgraded to ${plan.name} Plan!`);
+      setUpgradeSuccess(`Successfully upgraded to ${plan.name} Plan! Your student capacity and Next-Gen features are active.`);
       fetchData();
     } catch (err: any) {
       alert(err.message || 'Upgrade failed.');
@@ -81,80 +92,124 @@ export const StaffBilling: React.FC = () => {
     ? Math.min(100, Math.round((capacity.currentUsage / (capacity.maxCapacity || 1)) * 100))
     : 0;
 
+  const isProOrOrg = capacity?.tier === 'pro' || capacity?.tier === 'organization';
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-fadeIn pb-12">
       {/* Header */}
-      <div className="pb-2 border-b border-pearl-200">
-        <h2 className="text-2xl font-extrabold text-midnight-950 tracking-tight">
-          Subscription & Student Capacity Engine
-        </h2>
-        <p className="text-xs text-midnight-600 mt-1">
-          Manage your plan tier, student capacity limits, and billing history.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-pearl-200">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-2xl font-extrabold text-midnight-950 tracking-tight">
+              Subscription & Enterprise Capacity Engine
+            </h2>
+            <Badge variant="purple" className="text-[10px] font-mono uppercase">
+              B2B Institutional Suite
+            </Badge>
+          </div>
+          <p className="text-xs text-midnight-600 mt-1">
+            Manage your institution's active student quota, Next-Gen AI features, and Razorpay billing invoices.
+          </p>
+        </div>
+
+        {/* Quick Trust Indicator */}
+        <div className="flex items-center gap-2 text-xs font-mono font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
+          <ShieldCheck className="w-4 h-4 text-emerald-600" />
+          <span>Bank-Grade 256-Bit SSL Encrypted Billing</span>
+        </div>
       </div>
 
       {upgradeSuccess && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 flex items-center gap-2">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          <span>{upgradeSuccess}</span>
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 flex items-center justify-between gap-3 shadow-subtle">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <span>{upgradeSuccess}</span>
+          </div>
+          <button
+            onClick={() => setUpgradeSuccess(null)}
+            className="text-emerald-700 hover:text-emerald-900 font-bold underline text-[11px]"
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
-      {/* Active Plan Overview */}
+      {/* Active Plan Overview Card */}
       {capacity && (
-        <Card className="bg-gradient-to-r from-midnight-950 via-midnight-900 to-indigo-dark text-white border-none shadow-glow">
-          <CardContent className="pt-6 pb-6">
+        <Card className="bg-gradient-to-r from-midnight-950 via-midnight-900 to-indigo-950 text-white border-none shadow-glow rounded-3xl overflow-hidden relative">
+          <div className="absolute top-0 right-0 -mt-12 -mr-12 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+          <CardContent className="pt-6 pb-6 relative z-10">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+              {/* Left Column: Plan Meta */}
               <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Badge variant="purple" className="bg-white/10 text-indigo-glow border-none uppercase">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="purple" className="bg-white/10 text-indigo-glow border-none uppercase font-mono tracking-wider">
                     {capacity.tier} Tier Plan
                   </Badge>
-                  <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1">
+                  <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1 font-mono">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Active Status
                   </span>
                 </div>
-                <h3 className="text-2xl font-extrabold text-white">
-                  {capacity.maxCapacity} Maximum Students
+                <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                  {capacity.maxCapacity} Max Active Students
                 </h3>
-                <p className="text-xs text-pearl-300">
-                  Calculated across all classes you manage. Duplicate enrollments count only once.
-                </p>
+                <div className="pt-1">
+                  {isProOrOrg ? (
+                    <span className="inline-flex items-center gap-1.5 text-xs text-indigo-300 font-mono font-bold bg-indigo-500/20 px-2.5 py-1 rounded-lg border border-indigo-400/30">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                      Next-Gen AI & Proctoring Suite Active
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 text-xs text-pearl-300 font-mono bg-white/5 px-2.5 py-1 rounded-lg border border-white/10">
+                      <Lock className="w-3.5 h-3.5 text-pearl-400 shrink-0" />
+                      Standard Exams (Upgrade to Pro for AI Viva & Proctoring)
+                    </span>
+                  )}
+                </div>
               </div>
 
-              {/* Progress bar */}
+              {/* Middle Column: Utilization Progress Bar */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs font-mono font-bold text-pearl-200">
-                  <span>Current Utilization</span>
-                  <span>{capacity.currentUsage} / {capacity.maxCapacity} Slots ({capacityPercent}%)</span>
+                  <span>Student Capacity Quota</span>
+                  <span>
+                    {capacity.currentUsage} / {capacity.maxCapacity} Slots ({capacityPercent}%)
+                  </span>
                 </div>
-                <div className="w-full bg-midnight-800 rounded-full h-3 overflow-hidden">
+                <div className="w-full bg-midnight-800 rounded-full h-3 overflow-hidden p-0.5 border border-midnight-700">
                   <div
-                    className={`h-full rounded-full transition-all duration-300 ${
+                    className={`h-full rounded-full transition-all duration-500 ${
                       capacityPercent >= 90
                         ? 'bg-rose-500'
                         : capacityPercent >= 75
                         ? 'bg-amber-400'
-                        : 'bg-indigo-light'
+                        : 'bg-gradient-to-r from-indigo-500 to-indigo-300'
                     }`}
                     style={{ width: `${capacityPercent}%` }}
                   />
                 </div>
-                <p className="text-[11px] text-pearl-300">
-                  {capacity.remainingCapacity} available student slot{capacity.remainingCapacity === 1 ? '' : 's'} remaining.
+                <p className="text-[11px] text-pearl-300 font-mono">
+                  {capacity.remainingCapacity} available student seat{capacity.remainingCapacity === 1 ? '' : 's'} remaining in your cohort.
                 </p>
               </div>
 
-              {/* Expiry info */}
+              {/* Right Column: Renewal Info */}
               <div className="text-left md:text-right space-y-1">
-                <span className="text-[10px] uppercase font-bold text-pearl-300 block">
-                  Renewal Period
+                <span className="text-[10px] uppercase font-bold text-pearl-400 font-mono block">
+                  Subscription Period End
                 </span>
-                <span className="text-sm font-semibold text-white flex items-center md:justify-end gap-1">
+                <span className="text-sm font-semibold text-white flex items-center md:justify-end gap-1.5 font-mono">
                   <Calendar className="w-4 h-4 text-indigo-glow" />
                   {subscription?.currentPeriodEnd
-                    ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
+                    ? new Date(subscription.currentPeriodEnd).toLocaleDateString(undefined, {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      })
                     : 'Active Lifetime'}
+                </span>
+                <span className="text-[11px] text-indigo-300 font-mono block">
+                  Auto-renews: {subscription?.autoRenew ? 'Enabled' : 'Disabled'}
                 </span>
               </div>
             </div>
@@ -163,78 +218,165 @@ export const StaffBilling: React.FC = () => {
       )}
 
       {/* Available Plans Upgrade Grid */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h3 className="text-lg font-bold text-midnight-950">Upgrade Your Student Capacity</h3>
-            <p className="text-xs text-midnight-600">
-              Select the plan that aligns with your active student cohort size.
+            <h3 className="text-xl font-extrabold text-midnight-950 tracking-tight">
+              Select Your Institution Tier
+            </h3>
+            <p className="text-xs text-midnight-600 mt-0.5">
+              Choose the plan that fits your active student volume and AI proctoring requirements.
             </p>
           </div>
 
-          <div className="inline-flex items-center p-1 rounded-xl bg-pearl-200 border border-pearl-300">
-            <button
-              onClick={() => setBillingCycle('monthly')}
-              className={`text-xs font-bold px-3 py-1 rounded-lg ${
-                billingCycle === 'monthly' ? 'bg-white text-midnight-900 shadow-subtle' : 'text-midnight-600'
-              }`}
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setBillingCycle('yearly')}
-              className={`text-xs font-bold px-3 py-1 rounded-lg ${
-                billingCycle === 'yearly' ? 'bg-white text-midnight-900 shadow-subtle' : 'text-midnight-600'
-              }`}
-            >
-              Yearly (2 Mos Free)
-            </button>
+          {/* Billing Cycle Switcher with Savings Badge */}
+          <div className="flex items-center gap-2">
+            <div className="inline-flex items-center p-1 rounded-2xl bg-pearl-100 border border-pearl-200">
+              <button
+                type="button"
+                onClick={() => setBillingCycle('monthly')}
+                className={`text-xs font-bold px-4 py-1.5 rounded-xl transition-all ${
+                  billingCycle === 'monthly'
+                    ? 'bg-white text-midnight-950 shadow-subtle'
+                    : 'text-midnight-600 hover:text-midnight-900'
+                }`}
+              >
+                Monthly
+              </button>
+              <button
+                type="button"
+                onClick={() => setBillingCycle('yearly')}
+                className={`text-xs font-bold px-4 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                  billingCycle === 'yearly'
+                    ? 'bg-indigo-brand text-white shadow-subtle'
+                    : 'text-midnight-600 hover:text-midnight-900'
+                }`}
+              >
+                <span>Yearly</span>
+                <span className="text-[10px] bg-emerald-500 text-white font-mono px-1.5 py-0.2 rounded-full">
+                  Save 20%
+                </span>
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {/* 4 Plans Pricing Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
           {plans.map((p) => {
             const isCurrent = capacity?.tier === p.tier;
+            const isPro = p.tier === 'pro';
+            const isOrg = p.tier === 'organization';
             const price = billingCycle === 'yearly' ? p.priceYearly : p.priceMonthly;
+            const monthlyEquivalent = billingCycle === 'yearly' ? Math.round(p.priceYearly / 12) : p.priceMonthly;
 
             return (
-              <Card
+              <div
                 key={p._id}
-                className={`flex flex-col justify-between ${
-                  isCurrent ? 'ring-2 ring-indigo-brand border-indigo-brand bg-indigo-50/20' : ''
+                className={`rounded-3xl border flex flex-col justify-between transition-all duration-300 relative ${
+                  isPro
+                    ? 'border-indigo-500 shadow-xl ring-2 ring-indigo-500/50 bg-gradient-to-b from-indigo-50/50 via-white to-white dark:from-indigo-950/20 dark:to-midnight-950'
+                    : isCurrent
+                    ? 'border-indigo-400 bg-indigo-50/20 shadow-subtle'
+                    : 'border-pearl-200 bg-white hover:border-pearl-300 hover:shadow-subtle'
                 }`}
               >
-                <CardHeader>
+                {/* Header Badge */}
+                {isPro && (
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-[10px] font-mono font-bold uppercase tracking-widest px-3 py-1 rounded-full shadow-md flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-amber-300" />
+                    Most Popular Choice
+                  </div>
+                )}
+
+                {isOrg && (
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-midnight-900 text-pearl-100 text-[10px] font-mono font-bold uppercase tracking-widest px-3 py-1 rounded-full shadow-md">
+                    Campus Enterprise
+                  </div>
+                )}
+
+                <div className="p-6 space-y-4">
                   <div className="flex items-center justify-between">
-                    <Badge variant={p.tier === 'pro' ? 'purple' : 'default'} className="text-[10px]">
+                    <Badge
+                      variant={isPro ? 'purple' : isOrg ? 'default' : 'info'}
+                      className="text-[11px] font-mono uppercase font-bold"
+                    >
                       {p.name}
                     </Badge>
                     {isCurrent && (
-                      <span className="text-[10px] font-bold text-indigo-brand uppercase">Current Plan</span>
+                      <span className="text-[10px] font-bold font-mono text-indigo-brand bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 uppercase">
+                        Current Plan
+                      </span>
                     )}
                   </div>
-                  <CardTitle className="text-base mt-2">{p.maxStudents} Students</CardTitle>
-                  <div className="mt-2 text-midnight-900 flex items-baseline">
-                    <span className="text-2xl font-extrabold">₹{price}</span>
-                    <span className="text-xs text-midnight-600 ml-1">
-                      /{billingCycle === 'yearly' ? 'yr' : 'mo'}
-                    </span>
+
+                  <div>
+                    <h4 className="text-xl font-extrabold text-midnight-950 tracking-tight">
+                      {p.maxStudents} Students Quota
+                    </h4>
+                    <p className="text-[11px] text-midnight-500 mt-0.5">
+                      {p.tier === 'free'
+                        ? 'For individual tutors & classrooms'
+                        : p.tier === 'plus'
+                        ? 'For growing departments & coaching centers'
+                        : p.tier === 'pro'
+                        ? 'Next-Gen AI & full proctoring for colleges'
+                        : 'Campus-wide enterprise multi-staff pool'}
+                    </p>
                   </div>
-                </CardHeader>
 
-                <CardContent className="space-y-2 text-xs text-midnight-600">
-                  {p.features.map((feat, i) => (
-                    <div key={i} className="flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand shrink-0" />
-                      <span>{feat}</span>
+                  {/* Price */}
+                  <div className="pt-2 border-t border-pearl-100">
+                    <div className="flex items-baseline">
+                      <span className="text-3xl font-extrabold text-midnight-950 font-mono">
+                        {price === 0 ? '₹0' : `₹${monthlyEquivalent.toLocaleString()}`}
+                      </span>
+                      <span className="text-xs text-midnight-600 ml-1 font-mono">/month</span>
                     </div>
-                  ))}
-                </CardContent>
+                    {billingCycle === 'yearly' && price > 0 ? (
+                      <span className="text-[11px] text-emerald-600 font-mono block mt-0.5">
+                        Billed annually as ₹{price.toLocaleString()} (2 mos free)
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-midnight-400 font-mono block mt-0.5">
+                        {price === 0 ? 'Free Forever trial' : 'Billed monthly'}
+                      </span>
+                    )}
+                  </div>
 
+                  {/* Features List */}
+                  <div className="space-y-2.5 pt-3 border-t border-pearl-100 text-xs text-midnight-700">
+                    {p.features.map((feat, i) => {
+                      const isNextGen =
+                        feat.includes('Thought Playback') ||
+                        feat.includes('Socratic Viva') ||
+                        feat.includes('Bug Hunt') ||
+                        feat.includes('Mutation') ||
+                        feat.includes('Co-Pilot') ||
+                        feat.includes('Proctoring') ||
+                        feat.includes('Skill DNA');
+
+                      return (
+                        <div key={i} className="flex items-start gap-2">
+                          {isNextGen ? (
+                            <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0 mt-0.5" />
+                          ) : (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                          )}
+                          <span className={isNextGen ? 'font-semibold text-indigo-950' : ''}>{feat}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Upgrade Action Button */}
                 <div className="p-6 pt-0">
                   <Button
-                    variant={isCurrent ? 'outline' : 'primary'}
-                    className="w-full"
+                    variant={isPro ? 'primary' : isCurrent ? 'outline' : 'secondary'}
+                    className={`w-full py-2.5 ${
+                      isPro ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md' : ''
+                    }`}
                     size="sm"
                     disabled={isCurrent}
                     isLoading={upgradingPlanId === p._id}
@@ -243,46 +385,93 @@ export const StaffBilling: React.FC = () => {
                     {isCurrent ? 'Current Plan' : `Upgrade to ${p.name}`}
                   </Button>
                 </div>
-              </Card>
+              </div>
             );
           })}
         </div>
       </div>
 
+      {/* Feature Comparison & Institutional Guarantee */}
+      <div className="p-6 rounded-3xl bg-pearl-100/60 border border-pearl-200 space-y-4">
+        <h4 className="text-sm font-extrabold text-midnight-950 flex items-center gap-2">
+          <Shield className="w-4 h-4 text-indigo-brand" />
+          Enterprise Institutional Guarantee & Capacity Architecture
+        </h4>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div className="p-4 rounded-2xl bg-white border border-pearl-200 space-y-1">
+            <span className="font-bold text-midnight-900 block font-mono">Distinct Student Seats</span>
+            <p className="text-midnight-600 leading-relaxed text-[11px]">
+              Capacity limits count unique student email addresses across all your classes. One student enrolled in 5 classes counts as 1 slot.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white border border-pearl-200 space-y-1">
+            <span className="font-bold text-midnight-900 block font-mono">Instant Gateway Activation</span>
+            <p className="text-midnight-600 leading-relaxed text-[11px]">
+              Payments through Razorpay activate instantly. No waiting period; capacity expansion and Next-Gen AI features unlock immediately.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white border border-pearl-200 space-y-1">
+            <span className="font-bold text-midnight-900 block font-mono">Flexible Upgrades</span>
+            <p className="text-midnight-600 leading-relaxed text-[11px]">
+              Upgrade anytime when your cohort grows. Previous plan balances are adjusted smoothly to give you uninterrupted exam continuity.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Payment History Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Invoices & Payment History</CardTitle>
-          <CardDescription>Verified Razorpay transaction receipts</CardDescription>
+      <Card className="rounded-3xl border-pearl-200 shadow-sm overflow-hidden">
+        <CardHeader className="border-b border-pearl-100 bg-pearl-50/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base font-extrabold text-midnight-950">
+                Invoices & Payment History
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Verified Razorpay billing transactions and downloadable tax receipts
+              </CardDescription>
+            </div>
+            <CreditCard className="w-5 h-5 text-midnight-400" />
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {payments.length === 0 ? (
-            <p className="text-xs text-midnight-600 py-4 text-center">No payment transactions recorded yet.</p>
+            <div className="p-8 text-center text-xs text-midnight-500">
+              <CreditCard className="w-8 h-8 mx-auto text-midnight-300 mb-2 opacity-50" />
+              <p>No billing transactions recorded yet.</p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-pearl-200 text-midnight-600 uppercase font-semibold text-[11px]">
-                    <th className="py-3 px-4">Invoice No</th>
-                    <th className="py-3 px-4">Amount</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4">Receipt</th>
-                    <th className="py-3 px-4">Date</th>
+                  <tr className="border-b border-pearl-200 text-midnight-600 uppercase font-semibold text-[11px] bg-pearl-50/30">
+                    <th className="py-3.5 px-6">Invoice No</th>
+                    <th className="py-3.5 px-6">Amount Paid</th>
+                    <th className="py-3.5 px-6">Payment Status</th>
+                    <th className="py-3.5 px-6">Transaction ID</th>
+                    <th className="py-3.5 px-6 text-right">Date</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-pearl-100 font-medium">
                   {payments.map((pay) => (
-                    <tr key={pay._id}>
-                      <td className="py-3 px-4 font-mono font-bold text-midnight-900">{pay.invoiceNumber}</td>
-                      <td className="py-3 px-4 font-bold text-midnight-900">₹{pay.amount}</td>
-                      <td className="py-3 px-4">
-                        <Badge variant="success" className="text-[10px]">
+                    <tr key={pay._id} className="hover:bg-pearl-50/50 transition-colors">
+                      <td className="py-3.5 px-6 font-mono font-bold text-midnight-900">{pay.invoiceNumber}</td>
+                      <td className="py-3.5 px-6 font-mono font-bold text-indigo-brand">₹{pay.amount.toLocaleString()}</td>
+                      <td className="py-3.5 px-6">
+                        <Badge variant="success" className="text-[10px] font-mono uppercase">
                           {pay.status}
                         </Badge>
                       </td>
-                      <td className="py-3 px-4 font-mono text-midnight-600">{pay.receipt}</td>
-                      <td className="py-3 px-4 text-midnight-600">
-                        {new Date(pay.createdAt).toLocaleDateString()}
+                      <td className="py-3.5 px-6 font-mono text-midnight-600 text-[11px]">{pay.receipt || pay.razorpayPaymentId || '-'}</td>
+                      <td className="py-3.5 px-6 text-midnight-600 text-right font-mono">
+                        {new Date(pay.createdAt).toLocaleDateString(undefined, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
                       </td>
                     </tr>
                   ))}

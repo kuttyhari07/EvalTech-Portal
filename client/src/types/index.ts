@@ -48,6 +48,9 @@ export interface SubscriptionPlan {
   features: string[];
   aiQuestionsPerMonth: number;
   isActive: boolean;
+  isPopular?: boolean;
+  highlightBadge?: string;
+  hasNextGenAi?: boolean;
 }
 
 export interface Subscription {

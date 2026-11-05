@@ -11,6 +11,9 @@ export interface ISubscriptionPlan extends Document {
   features: string[];
   aiQuestionsPerMonth: number;
   isActive: boolean;
+  isPopular?: boolean;
+  highlightBadge?: string;
+  hasNextGenAi?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,6 +29,9 @@ const subscriptionPlanSchema = new Schema<ISubscriptionPlan>(
     features: [{ type: String }],
     aiQuestionsPerMonth: { type: Number, default: 0 },
     isActive: { type: Boolean, default: true, index: true },
+    isPopular: { type: Boolean, default: false },
+    highlightBadge: { type: String },
+    hasNextGenAi: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

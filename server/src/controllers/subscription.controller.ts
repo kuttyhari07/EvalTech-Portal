@@ -9,14 +9,16 @@ import { recordAuditLog } from '../utils/audit';
 
 export class SubscriptionController {
   static async listPlans(req: AuthRequest, res: Response): Promise<void> {
-    let plans = await SubscriptionPlan.find({ isActive: true }).sort({ maxStudents: 1 });
-
-    // Seed initial plans if database is fresh
-    if (plans.length === 0) {
-      await SubscriptionPlan.insertMany(INITIAL_PLANS);
-      plans = await SubscriptionPlan.find({ isActive: true }).sort({ maxStudents: 1 });
+    // Upsert / sync initial plans so features, student capacity, and pricing are always synchronized
+    for (const p of INITIAL_PLANS) {
+      await SubscriptionPlan.findOneAndUpdate(
+        { slug: p.slug },
+        { $set: p },
+        { upsert: true, new: true }
+      );
     }
 
+    const plans = await SubscriptionPlan.find({ isActive: true }).sort({ maxStudents: 1 });
     sendSuccess(res, plans);
   }
 
