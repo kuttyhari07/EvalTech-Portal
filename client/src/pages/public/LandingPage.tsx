@@ -24,6 +24,8 @@ import {
   Send,
   Star,
   CreditCard,
+  Infinity,
+  Flame,
 } from 'lucide-react';
 
 export const LandingPage: React.FC = () => {
@@ -33,20 +35,20 @@ export const LandingPage: React.FC = () => {
 
   const faqs = [
     {
-      q: 'How does student capacity work across multiple classes?',
-      a: 'Student capacity counts distinct active students within your workspace or institution. If the same student is enrolled in three different subjects taught by you, they only consume a single capacity slot.',
+      q: 'Are there any student seat limits on EvalTech?',
+      a: 'Zero student seat limits! Every teacher and institution on EvalTech can enroll unlimited students into their classes across all tiers. You only upgrade if you need unlimited AI exam evaluation volume.',
     },
     {
       q: 'Can students take examinations without creating a permanent account?',
       a: 'Yes! Students can access authorized examinations instantly using their unique 6-character exam access code or a direct invite link, validating their credentials on the spot.',
     },
     {
-      q: 'How does the AI-assisted question generation maintain quality?',
-      a: 'AI question generation acts as a human-in-the-loop copilot. Every question generated must be reviewed, edited, and approved by the instructor before entering your question bank or exam paper.',
+      q: 'How does the AI Socratic Viva & question generation work?',
+      a: 'Our Socratic Viva engine conducts conversational oral exams using real-time voice synthesis and speech recognition, probing students with adaptive follow-ups to ensure genuine conceptual mastery.',
     },
     {
-      q: 'Is Razorpay payment integration secure?',
-      a: 'All subscription checkouts and renewals are cryptographically verified using SHA-256 HMAC backend verification and automated webhook reconciliation.',
+      q: 'How does payment and instant subscription activation work?',
+      a: 'We support 100% Direct UPI payments (Paytm, GPay, PhonePe, BHIM) and Razorpay with automated 3-second bank confirmation and instant 12-digit UTR reconciliation.',
     },
   ];
 
@@ -279,11 +281,11 @@ export const LandingPage: React.FC = () => {
             <Card>
               <CardHeader>
                 <div className="w-10 h-10 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center mb-2">
-                  <Users className="w-5 h-5" />
+                  <Infinity className="w-5 h-5" />
                 </div>
-                <CardTitle>Distinct Capacity Engine</CardTitle>
+                <CardTitle>Zero Student Limits</CardTitle>
                 <CardDescription>
-                  Students belong to multiple classes without counting against your subscription limit twice. Concurrency-safe quota enforcement.
+                  Enroll unlimited students across unlimited classes. No restrictive seat quotas or per-student paywalls ever.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -295,7 +297,7 @@ export const LandingPage: React.FC = () => {
                 </div>
                 <CardTitle>Multi-Tenant Organizations</CardTitle>
                 <CardDescription>
-                  Schools manage multiple staff members with dedicated classes and shared capacity pools under institutional oversight.
+                  Colleges manage multiple staff members with dedicated classes and centralized departmental oversight.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -332,147 +334,250 @@ export const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-12">
             <h2 className="text-xs font-bold uppercase tracking-wider text-indigo-brand mb-2">
-              Transparent Pricing
+              Transparent & Unlimited Pricing
             </h2>
             <h3 className="text-3xl sm:text-4xl font-extrabold text-midnight-950 tracking-tight">
-              Scale Comfortably With Your Student Roster
+              Unlimited Students. Upgrade Only For AI Volume.
             </h3>
             <p className="mt-3 text-sm text-midnight-600">
-              Start free with up to 10 students. Upgrade whenever your classes grow.
+              Start 100% free with unlimited student seats and complete Next-Gen AI features. Upgrade only when you need higher AI exam capacity.
             </p>
 
             {/* Monthly / Yearly Toggle */}
-            <div className="mt-8 inline-flex items-center p-1 rounded-xl bg-pearl-200 border border-pearl-300">
+            <div className="mt-8 inline-flex items-center p-1 rounded-2xl bg-pearl-200 border border-pearl-300">
               <button
                 onClick={() => setBillingCycle('monthly')}
-                className={`text-xs font-bold px-4 py-1.5 rounded-lg transition-all ${
+                className={`text-xs font-bold px-4 py-1.5 rounded-xl transition-all ${
                   billingCycle === 'monthly' ? 'bg-white text-midnight-900 shadow-subtle' : 'text-midnight-600'
                 }`}
               >
-                Monthly Billing
+                Monthly Flexible
               </button>
               <button
                 onClick={() => setBillingCycle('yearly')}
-                className={`text-xs font-bold px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
-                  billingCycle === 'yearly' ? 'bg-white text-midnight-900 shadow-subtle' : 'text-midnight-600'
+                className={`text-xs font-bold px-4 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                  billingCycle === 'yearly' ? 'bg-indigo-brand text-white shadow-subtle' : 'text-midnight-600'
                 }`}
               >
-                Yearly Billing <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold">2 Months Free</span>
+                <span>Annual Commitment</span>
+                <span className="text-[10px] bg-emerald-500 text-white px-1.5 py-0.2 rounded-full font-bold">Save 20%</span>
               </button>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {/* Free Plan */}
-            <Card className="flex flex-col justify-between border-pearl-300">
+            <Card className="flex flex-col justify-between border-pearl-300 bg-white hover:border-pearl-400 transition-all rounded-3xl shadow-sm">
               <CardHeader>
-                <Badge variant="default" className="w-fit mb-2">Free Starter</Badge>
-                <CardTitle>Free</CardTitle>
-                <div className="mt-4 flex items-baseline text-midnight-900">
-                  <span className="text-3xl font-extrabold">₹0</span>
-                  <span className="text-xs text-midnight-600 ml-1">/ forever</span>
+                <div className="flex items-center justify-between mb-2">
+                  <Badge variant="info" className="w-fit text-[10px] font-mono uppercase font-bold">Taste The Magic</Badge>
                 </div>
-                <CardDescription className="mt-2">Ideal for individual teachers trying out the platform.</CardDescription>
+                <CardTitle className="text-xl font-extrabold text-midnight-950">Free Forever</CardTitle>
+                <div className="mt-3 flex items-baseline text-midnight-950">
+                  <span className="text-3xl font-extrabold font-mono">₹0</span>
+                  <span className="text-xs text-midnight-600 ml-1 font-mono">/ lifetime</span>
+                </div>
+                <CardDescription className="mt-2 text-xs">Full access to experience all Next-Gen AI features without paying a single rupee.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="text-xs font-semibold text-midnight-800">Included:</div>
-                <ul className="text-xs text-midnight-600 space-y-2">
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand" /> Up to 10 active students</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand" /> Unlimited exams & classes</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand" /> Instant automated grading</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand" /> Standard question types</li>
+                <div className="text-xs font-bold text-midnight-800 uppercase tracking-wider font-mono">Included Highlights:</div>
+                <ul className="text-xs text-midnight-600 space-y-2.5">
+                  <li className="flex items-center gap-2 font-semibold text-emerald-700">
+                    <Infinity className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Unlimited Student Seats</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand shrink-0" />
+                    <span>2 Next-Gen AI Exams / month</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand shrink-0" />
+                    <span>AI Socratic Viva Voice Engine</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand shrink-0" />
+                    <span>Thought Playback & Keystroke Replay</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand shrink-0" />
+                    <span>Optional Face & Voice Proctoring</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand shrink-0" />
+                    <span>Verified Skill DNA Certificate</span>
+                  </li>
                 </ul>
               </CardContent>
               <div className="p-6 pt-0">
                 <Link to="/register" className="w-full block">
-                  <Button variant="outline" className="w-full" size="sm">Get Started</Button>
+                  <Button variant="outline" className="w-full rounded-xl" size="sm">Get Started Free</Button>
                 </Link>
               </div>
             </Card>
 
-            {/* Plus Plan */}
-            <Card className="flex flex-col justify-between border-indigo-brand/30 shadow-card">
+            {/* Plus / On-Demand Pass Plan */}
+            <Card className="flex flex-col justify-between border-amber-300/80 bg-white shadow-card rounded-3xl relative">
               <CardHeader>
-                <Badge variant="purple" className="w-fit mb-2">Popular for Tutors</Badge>
-                <CardTitle>Plus</CardTitle>
-                <div className="mt-4 flex items-baseline text-midnight-900">
-                  <span className="text-3xl font-extrabold">
-                    {billingCycle === 'yearly' ? '₹7,990' : '₹799'}
-                  </span>
-                  <span className="text-xs text-midnight-600 ml-1">/{billingCycle === 'yearly' ? 'yr' : 'mo'}</span>
+                <div className="flex items-center justify-between mb-2">
+                  <Badge variant="warning" className="w-fit text-[10px] font-mono uppercase font-bold">Pay-As-You-Go</Badge>
                 </div>
-                <CardDescription className="mt-2">For individual instructors with multiple cohorts.</CardDescription>
+                <CardTitle className="text-xl font-extrabold text-midnight-950">On-Demand Pass</CardTitle>
+                <div className="mt-3 flex items-baseline text-midnight-950">
+                  <span className="text-3xl font-extrabold font-mono">
+                    {billingCycle === 'yearly' ? '₹799' : '₹199'}
+                  </span>
+                  <span className="text-xs text-midnight-600 ml-1 font-mono">
+                    {billingCycle === 'yearly' ? '/ 5-pass pack' : '/ single pass'}
+                  </span>
+                </div>
+                <CardDescription className="mt-2 text-xs">
+                  {billingCycle === 'yearly'
+                    ? '5 AI Exam passes with no monthly lock-in. Valid forever.'
+                    : '1 AI Exam pass for term exams or viva tests without monthly commitment.'}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="text-xs font-semibold text-midnight-800">Everything in Free, plus:</div>
-                <ul className="text-xs text-midnight-600 space-y-2">
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand" /> Up to 50 active students</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand" /> AI Question Generator (50/mo)</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand" /> CSV student roster import</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand" /> Result email automation</li>
+                <div className="text-xs font-bold text-midnight-800 uppercase tracking-wider font-mono">Included Highlights:</div>
+                <ul className="text-xs text-midnight-600 space-y-2.5">
+                  <li className="flex items-center gap-2 font-semibold text-emerald-700">
+                    <Infinity className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Unlimited Student Seats</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand shrink-0" />
+                    <span>{billingCycle === 'yearly' ? '5 AI Exam passes included' : '1 Single AI Exam pass'}</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand shrink-0" />
+                    <span>Passes never expire (carry forward)</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand shrink-0" />
+                    <span>Full AI Viva & Thought Playback</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand shrink-0" />
+                    <span>Instant Direct UPI Activation</span>
+                  </li>
                 </ul>
               </CardContent>
               <div className="p-6 pt-0">
                 <Link to="/register" className="w-full block">
-                  <Button variant="primary" className="w-full" size="sm">Choose Plus</Button>
+                  <Button variant="primary" className="w-full rounded-xl bg-amber-600 hover:bg-amber-700 text-white" size="sm">
+                    {billingCycle === 'yearly' ? 'Get 5-Pass Pack (₹799)' : 'Get Single Pass (₹199)'}
+                  </Button>
                 </Link>
               </div>
             </Card>
 
             {/* Pro Plan */}
-            <Card className="flex flex-col justify-between border-electric-violet/40 ring-2 ring-indigo-brand/20 shadow-card">
-              <CardHeader>
-                <Badge variant="purple" className="w-fit mb-2">Best Value</Badge>
-                <CardTitle>Pro</CardTitle>
-                <div className="mt-4 flex items-baseline text-midnight-900">
-                  <span className="text-3xl font-extrabold">
+            <Card className="flex flex-col justify-between border-indigo-500 shadow-2xl ring-2 ring-indigo-500/50 bg-gradient-to-b from-indigo-50/40 via-white to-white rounded-3xl relative">
+              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-[10px] font-mono font-bold uppercase tracking-widest px-3.5 py-1 rounded-full shadow-md flex items-center gap-1">
+                <Flame className="w-3 h-3 text-amber-300" />
+                Unlimited Powerhouse
+              </div>
+              <CardHeader className="pt-7">
+                <div className="flex items-center justify-between mb-2">
+                  <Badge variant="purple" className="w-fit text-[10px] font-mono uppercase font-bold">Pro Unlimited</Badge>
+                </div>
+                <CardTitle className="text-xl font-extrabold text-midnight-950">Pro Educator</CardTitle>
+                <div className="mt-3 flex items-baseline text-midnight-950">
+                  <span className="text-3xl font-extrabold font-mono text-indigo-600">
                     {billingCycle === 'yearly' ? '₹14,990' : '₹1,499'}
                   </span>
-                  <span className="text-xs text-midnight-600 ml-1">/{billingCycle === 'yearly' ? 'yr' : 'mo'}</span>
+                  <span className="text-xs text-midnight-600 ml-1 font-mono">
+                    /{billingCycle === 'yearly' ? 'yr (save ₹3,000)' : 'mo'}
+                  </span>
                 </div>
-                <CardDescription className="mt-2">For busy educators and professional coaching academies.</CardDescription>
+                <CardDescription className="mt-2 text-xs">For busy teachers, coaching academies & colleges running continuous assessments.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="text-xs font-semibold text-midnight-800">Everything in Plus, plus:</div>
-                <ul className="text-xs text-midnight-600 space-y-2">
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand" /> Up to 100 active students</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand" /> AI Question Generator (250/mo)</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand" /> Full question bank with tags</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand" /> Anti-tamper logs & blur detection</li>
+                <div className="text-xs font-bold text-midnight-800 uppercase tracking-wider font-mono">Everything in Free, plus:</div>
+                <ul className="text-xs text-midnight-600 space-y-2.5">
+                  <li className="flex items-center gap-2 font-bold text-indigo-700">
+                    <Infinity className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <span>Unlimited Student Seats</span>
+                  </li>
+                  <li className="flex items-center gap-2 font-bold text-indigo-700">
+                    <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span>Unlimited Next-Gen AI Exams</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand shrink-0" />
+                    <span>Unlimited Socratic AI Vivas</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand shrink-0" />
+                    <span>Unlimited Thought Playback</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand shrink-0" />
+                    <span>AI Question Generator (Unlimited)</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand shrink-0" />
+                    <span>Staff-Configurable Proctoring Suite</span>
+                  </li>
                 </ul>
               </CardContent>
               <div className="p-6 pt-0">
                 <Link to="/register" className="w-full block">
-                  <Button variant="electric" className="w-full" size="sm">Choose Pro</Button>
+                  <Button variant="primary" className="w-full rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold" size="sm">
+                    Upgrade to Pro
+                  </Button>
                 </Link>
               </div>
             </Card>
 
             {/* Organization Plan */}
-            <Card className="flex flex-col justify-between border-pearl-300">
+            <Card className="flex flex-col justify-between border-pearl-300 bg-white hover:border-pearl-400 transition-all rounded-3xl shadow-sm">
               <CardHeader>
-                <Badge variant="default" className="w-fit mb-2">Institutions</Badge>
-                <CardTitle>Organization</CardTitle>
-                <div className="mt-4 flex items-baseline text-midnight-900">
-                  <span className="text-3xl font-extrabold">
-                    {billingCycle === 'yearly' ? '₹34,990' : '₹3,499'}
-                  </span>
-                  <span className="text-xs text-midnight-600 ml-1">/{billingCycle === 'yearly' ? 'yr' : 'mo'}</span>
+                <div className="flex items-center justify-between mb-2">
+                  <Badge variant="default" className="w-fit text-[10px] font-mono uppercase font-bold">Universities</Badge>
                 </div>
-                <CardDescription className="mt-2">For schools, colleges, and training companies.</CardDescription>
+                <CardTitle className="text-xl font-extrabold text-midnight-950">Campus Enterprise</CardTitle>
+                <div className="mt-3 flex items-baseline text-midnight-950">
+                  <span className="text-3xl font-extrabold font-mono">
+                    {billingCycle === 'yearly' ? '₹49,990' : '₹4,999'}
+                  </span>
+                  <span className="text-xs text-midnight-600 ml-1 font-mono">
+                    /{billingCycle === 'yearly' ? 'yr' : 'mo'}
+                  </span>
+                </div>
+                <CardDescription className="mt-2 text-xs">Full institutional governance for entire colleges and universities.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="text-xs font-semibold text-midnight-800">Institutional power:</div>
-                <ul className="text-xs text-midnight-600 space-y-2">
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand" /> Up to 250 students (expandable)</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand" /> Unlimited staff teachers</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand" /> Shared org capacity pool</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand" /> Centralized institutional billing</li>
+                <div className="text-xs font-bold text-midnight-800 uppercase tracking-wider font-mono">Campus Highlights:</div>
+                <ul className="text-xs text-midnight-600 space-y-2.5">
+                  <li className="flex items-center gap-2 font-semibold text-emerald-700">
+                    <Infinity className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Unlimited Students Across Campus</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand shrink-0" />
+                    <span>Unlimited Staff & Faculty Seats</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand shrink-0" />
+                    <span>Multi-Department Hierarchical Pools</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand shrink-0" />
+                    <span>Custom College Logo & Subdomain</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand shrink-0" />
+                    <span>Audit Logs & Compliance Export</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-indigo-brand shrink-0" />
+                    <span>Dedicated SLA & Support Engineer</span>
+                  </li>
                 </ul>
               </CardContent>
               <div className="p-6 pt-0">
                 <Link to="/register" className="w-full block">
-                  <Button variant="outline" className="w-full" size="sm">Register Organization</Button>
+                  <Button variant="outline" className="w-full rounded-xl" size="sm">Register Campus</Button>
                 </Link>
               </div>
             </Card>
